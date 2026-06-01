@@ -1,4 +1,4 @@
-package com.fitworkup.app.ui.theme
+package fitworkup.app.ui.theme
 
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.*
