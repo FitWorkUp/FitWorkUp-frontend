@@ -4,7 +4,7 @@ plugins {
 }
 
 android {
-    namespace = "com.example.fitworkup"
+    namespace = "com.fitworkup.app"
     compileSdk {
         version = release(36) {
             minorApiLevel = 1
@@ -12,7 +12,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.example.fitworkup"
+        applicationId = "com.fitworkup.app"
         minSdk = 29
         targetSdk = 36
         versionCode = 1
