@@ -1,22 +1,26 @@
-package fitworkup.app.ui.theme
+package com.fitworkup.app.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-// Cores primárias
-val FitRed = Color(0xFFE0271A)
-val FitRedDark = Color(0xFFC0391B)
+// Cor Primária (Ação e Marca)
+val BrandRed = Color(0xFFE0271A)
 
-// Neutros claro
-val BackgroundLight = Color(0xFFFFFFFF)
-val SurfaceLight = Color(0xFFF5F5F5)
-val OnBackgroundLight = Color(0xFF111111)
+// Neutros - Tema Claro
+val LightBackground = Color(0xFFFFFFFF)
+val LightCardSurface = Color(0xFFF5F5F5)
+val LightTextPrimary = Color(0xFF111111)
+val LightTextSecondary = Color(0xFF6B6B6B)
 
-// Neutros escuro
-val BackgroundDark = Color(0xFF0F0F0F)
-val SurfaceDark = Color(0xFF1C1C1C)
-val OnBackgroundDark = Color(0xFFF0F0F0)
+// Neutros - Tema Escuro
+val DarkBackground = Color(0xFF0F0F0F)
+val DarkCardSurface = Color(0xFF1C1C1C)
+val DarkTextPrimary = Color(0xFFF0F0F0)
+val DarkTextSecondary = Color(0xFF9A9A9A)
 
-// Sistema
-val SuccessGreen = Color(0xFF1D9E75)
-val WarningAmber = Color(0xFFEF9F27)
-val XpGold = Color(0xFFBA7517)
+// Cores de Sistema
+val SystemSuccess = Color(0xFF1D9E75)
+val SystemWarningAmber = Color(0xFFEF9F27) // Erros e Alerta Anti-fraude
+val SystemDestructive = Color(0xFFC0392B)
+
+// Cor de XP / Progressão / FitCoins
+val ProgressionGold = Color(0xFFBA7517)

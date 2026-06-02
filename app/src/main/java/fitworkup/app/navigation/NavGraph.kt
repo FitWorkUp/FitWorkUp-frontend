@@ -6,33 +6,21 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.fitworkup.app.ui.screens.splash.SplashScreen
 import com.fitworkup.app.ui.screens.onboarding.OnboardingScreen
-import com.fitworkup.app.ui.screens.login.LoginScreen
+import com.fitworkup.app.ui.screens.home.LoginScreen // 👈 IMPORT CORRIGIDO (estava .home)
 import com.fitworkup.app.ui.screens.home.HomeScreen
 
-// ─── Rotas ──────────────────────────────────────────────────────────────────
+// ─── Rotas Principais (Telas Cheias) ────────────────────────────────────────
 object Routes {
     const val SPLASH      = "splash"
     const val ONBOARDING  = "onboarding"
     const val LOGIN       = "login"
     const val HOME        = "home"
-    // Adicione aqui as próximas rotas:
-    // const val RANKING  = "ranking"
-    // const val LOJA     = "loja"
-    // const val PERFIL   = "perfil/{userId}"
 }
 
 /**
  * NavGraph
  *
  * Ponto central de navegação do FitWorkUp.
- * Coloque este Composable dentro do FitWorkUpTheme na MainActivity.
- *
- * Exemplo na MainActivity:
- *   setContent {
- *       FitWorkUpTheme {
- *           NavGraph()
- *       }
- *   }
  */
 @Composable
 fun NavGraph() {
@@ -48,7 +36,6 @@ fun NavGraph() {
             SplashScreen(
                 onNavigate = { route ->
                     navController.navigate(route) {
-                        // Remove splash da back stack — botão voltar não volta para ela
                         popUpTo(Routes.SPLASH) { inclusive = true }
                     }
                 }
@@ -71,22 +58,15 @@ fun NavGraph() {
             LoginScreen(
                 onNavigateToHome = {
                     navController.navigate(Routes.HOME) {
-                        // Remove login da back stack — usuário autenticado não volta para login
                         popUpTo(Routes.LOGIN) { inclusive = true }
                     }
                 }
             )
         }
 
-        // ── Home (placeholder) ───────────────────────────────────────────
+        // ── Home (Contém as Abas: Treino, Ranking e Perfil) ──────────────
         composable(Routes.HOME) {
             HomeScreen()
         }
-
-        // Adicione as próximas telas abaixo seguindo o mesmo padrão:
-        //
-        // composable(Routes.RANKING) {
-        //     RankingScreen(onNavigateBack = { navController.popBackStack() })
-        // }
     }
 }

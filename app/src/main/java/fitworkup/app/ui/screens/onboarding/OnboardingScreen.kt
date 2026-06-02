@@ -19,16 +19,15 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
 
-// ─── Modelo de dados de cada slide ──────────────────────────────────────────
 data class OnboardingPage(
-    val emoji: String,          // placeholder visual — troque por ícone/ilustração
+    val emoji: String,
     val title: String,
     val description: String,
-    val highlightA: String,     // mini card esquerdo (slide 1) ou vazio
-    val highlightB: String,     // mini card direito (slide 1) ou vazio
+    val highlightA: String,
+    val highlightB: String,
     val highlightLabelA: String,
     val highlightLabelB: String,
-    val checkItems: List<String> // checklist (slide 3) ou lista vazia
+    val checkItems: List<String>
 )
 
 private val pages = listOf(
@@ -62,20 +61,6 @@ private val pages = listOf(
     )
 )
 
-// ─── Cores ──────────────────────────────────────────────────────────────────
-private val FitRed    = Color(0xFFE0271A)
-private val RedLight  = Color(0xFFFFECEB)
-private val GreenLight= Color(0xFFE1F5EE)
-private val GreenDark = Color(0xFF085041)
-private val GreenMid  = Color(0xFF0F6E56)
-private val RedDark   = Color(0xFF791F1F)
-
-/**
- * OnboardingScreen
- *
- * 3 slides com HorizontalPager.
- * [onNavigateToLogin] chamado ao fim do último slide.
- */
 @Composable
 fun OnboardingScreen(
     onNavigateToLogin: () -> Unit
@@ -89,7 +74,6 @@ fun OnboardingScreen(
             .background(MaterialTheme.colorScheme.background)
             .padding(horizontal = 24.dp)
     ) {
-        // ── Slides ──────────────────────────────────────────────────────────
         HorizontalPager(
             state = pagerState,
             modifier = Modifier.weight(1f)
@@ -97,14 +81,12 @@ fun OnboardingScreen(
             OnboardingPageContent(page = pages[index])
         }
 
-        // ── Rodapé: dots + botão ─────────────────────────────────────────
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(bottom = 40.dp)
         ) {
-            // Dots indicadores
             PagerDots(
                 pageCount = pages.size,
                 currentPage = pagerState.currentPage
@@ -112,7 +94,6 @@ fun OnboardingScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Botão principal
             val isLastPage = pagerState.currentPage == pages.size - 1
             Button(
                 onClick = {
@@ -127,32 +108,29 @@ fun OnboardingScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(52.dp),
-                shape = RoundedCornerShape(12.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = FitRed)
+                shape = RoundedCornerShape(14.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
             ) {
                 Text(
                     text = if (isLastPage) "Criar minha conta" else "Próximo",
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.Medium
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.SemiBold
                 )
             }
 
-            // Pular (só nos dois primeiros slides)
             if (!isLastPage) {
                 Spacer(modifier = Modifier.height(12.dp))
                 TextButton(onClick = onNavigateToLogin) {
                     Text(
                         text = "Pular",
-                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.45f),
-                        fontSize = 13.sp
+                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f),
+                        fontSize = 14.sp
                     )
                 }
             }
         }
     }
 }
-
-// ── Conteúdo de cada slide ───────────────────────────────────────────────────
 
 @Composable
 private fun OnboardingPageContent(page: OnboardingPage) {
@@ -162,7 +140,6 @@ private fun OnboardingPageContent(page: OnboardingPage) {
             .padding(top = 48.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // Ícone / ilustração placeholder
         Box(
             modifier = Modifier
                 .size(88.dp)
@@ -177,62 +154,55 @@ private fun OnboardingPageContent(page: OnboardingPage) {
 
         Spacer(modifier = Modifier.height(28.dp))
 
-        // Título
         Text(
             text = page.title,
-            fontSize = 20.sp,
-            fontWeight = FontWeight.Medium,
+            fontSize = 22.sp,
+            fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onBackground,
             textAlign = TextAlign.Center,
-            lineHeight = 28.sp
+            lineHeight = 30.sp
         )
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        // Descrição
         Text(
             text = page.description,
-            fontSize = 13.sp,
-            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.55f),
+            fontSize = 14.sp,
+            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
             textAlign = TextAlign.Center,
-            lineHeight = 20.sp
+            lineHeight = 22.sp
         )
 
-        Spacer(modifier = Modifier.height(28.dp))
+        Spacer(modifier = Modifier.height(32.dp))
 
-        // Conteúdo específico por slide
         when {
-            // Slide 1: mini cards de XP
             page.highlightA.isNotEmpty() -> {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
+                    // Cards de XP adaptáveis
                     XpCard(
                         value = page.highlightA,
                         label = page.highlightLabelA,
-                        background = RedLight,
-                        valueColor = RedDark,
-                        labelColor = FitRed,
+                        background = MaterialTheme.colorScheme.primaryContainer,
+                        textColor = MaterialTheme.colorScheme.onPrimaryContainer,
                         modifier = Modifier.weight(1f)
                     )
                     XpCard(
                         value = page.highlightB,
                         label = page.highlightLabelB,
-                        background = GreenLight,
-                        valueColor = GreenDark,
-                        labelColor = GreenMid,
+                        background = MaterialTheme.colorScheme.surfaceVariant,
+                        textColor = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.weight(1f)
                     )
                 }
             }
 
-            // Slide 2: preview do ranking (mock estático)
             page.emoji == "🏆" -> {
                 RankingPreview()
             }
 
-            // Slide 3: checklist anti-fraude
             page.checkItems.isNotEmpty() -> {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     page.checkItems.forEach { item ->
@@ -244,26 +214,23 @@ private fun OnboardingPageContent(page: OnboardingPage) {
     }
 }
 
-// ── Sub-componentes ──────────────────────────────────────────────────────────
-
 @Composable
 private fun XpCard(
     value: String,
     label: String,
     background: Color,
-    valueColor: Color,
-    labelColor: Color,
+    textColor: Color,
     modifier: Modifier = Modifier
 ) {
     Column(
         modifier = modifier
-            .clip(RoundedCornerShape(12.dp))
+            .clip(RoundedCornerShape(14.dp))
             .background(background)
-            .padding(vertical = 14.dp, horizontal = 12.dp),
+            .padding(vertical = 16.dp, horizontal = 12.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text(text = value, fontSize = 22.sp, fontWeight = FontWeight.Medium, color = valueColor)
-        Text(text = label, fontSize = 11.sp, color = labelColor)
+        Text(text = value, fontSize = 24.sp, fontWeight = FontWeight.Bold, color = textColor)
+        Text(text = label, fontSize = 12.sp, color = textColor.copy(alpha = 0.8f), textAlign = TextAlign.Center)
     }
 }
 
@@ -277,36 +244,44 @@ private fun RankingPreview() {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(14.dp))
+            .clip(RoundedCornerShape(16.dp))
             .background(MaterialTheme.colorScheme.surfaceVariant)
-            .padding(12.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+            .padding(14.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         mockUsers.forEach { (pos, nome, xp) ->
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text(pos, fontSize = 13.sp, fontWeight = FontWeight.Medium,
-                    color = if (pos == "1") Color(0xFFBA7517)
-                    else MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f),
-                    modifier = Modifier.width(16.dp))
-
-                // Avatar placeholder
-                Box(
-                    modifier = Modifier
-                        .size(28.dp)
-                        .background(FitRed.copy(alpha = 0.15f), RoundedCornerShape(50))
+                Text(
+                    text = pos,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = if (pos == "1") MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                    modifier = Modifier.width(16.dp)
                 )
 
-                Text(nome, fontSize = 13.sp,
-                    color = MaterialTheme.colorScheme.onBackground,
-                    modifier = Modifier.weight(1f))
+                Box(
+                    modifier = Modifier
+                        .size(32.dp)
+                        .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f), RoundedCornerShape(50))
+                )
 
-                Text(xp, fontSize = 12.sp,
-                    color = if (pos == "1") Color(0xFFBA7517)
-                    else MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f))
+                Text(
+                    text = nome,
+                    fontSize = 14.sp,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.weight(1f)
+                )
+
+                Text(
+                    text = xp,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = if (pos == "1") MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                )
             }
         }
     }
@@ -316,22 +291,22 @@ private fun RankingPreview() {
 private fun CheckItem(text: String) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(10.dp))
-            .background(GreenLight)
-            .padding(horizontal = 14.dp, vertical = 10.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant)
+            .padding(horizontal = 16.dp, vertical = 12.dp)
     ) {
         Box(
             modifier = Modifier
-                .size(18.dp)
-                .background(GreenMid, RoundedCornerShape(50)),
+                .size(20.dp)
+                .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(50)),
             contentAlignment = Alignment.Center
         ) {
-            Text("✓", fontSize = 10.sp, color = Color.White, fontWeight = FontWeight.Medium)
+            Text("✓", fontSize = 12.sp, color = MaterialTheme.colorScheme.onPrimary, fontWeight = FontWeight.Bold)
         }
-        Text(text, fontSize = 12.sp, color = GreenDark)
+        Text(text = text, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 
@@ -341,7 +316,7 @@ private fun PagerDots(pageCount: Int, currentPage: Int) {
         repeat(pageCount) { index ->
             val isActive = index == currentPage
             val width by animateDpAsState(
-                targetValue = if (isActive) 20.dp else 8.dp,
+                targetValue = if (isActive) 24.dp else 8.dp,
                 animationSpec = tween(250),
                 label = "dot_width_$index"
             )
@@ -350,7 +325,7 @@ private fun PagerDots(pageCount: Int, currentPage: Int) {
                     .height(8.dp)
                     .width(width)
                     .background(
-                        if (isActive) FitRed else FitRed.copy(alpha = 0.25f),
+                        if (isActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.primary.copy(alpha = 0.3f),
                         RoundedCornerShape(50)
                     )
             )
