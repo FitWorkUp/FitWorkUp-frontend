@@ -70,7 +70,7 @@ fun SplashScreen(
             )
 
             Text(
-                text = "MOVA-SE. EVOLUA. DOMINE.",
+                text = "SUBA DE NÍVEL A CADA QUILÔMETRO ",
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Medium,
                 color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.4f),
