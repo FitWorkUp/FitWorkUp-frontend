@@ -8,6 +8,7 @@ import com.fitworkup.app.ui.screens.splash.SplashScreen
 import com.fitworkup.app.ui.screens.onboarding.OnboardingScreen
 import com.fitworkup.app.ui.screens.home.LoginScreen // 👈 IMPORT CORRIGIDO (estava .home)
 import com.fitworkup.app.ui.screens.home.HomeScreen
+import com.fitworkup.app.ui.screens.workout.WorkoutScreen
 
 // ─── Rotas Principais (Telas Cheias) ────────────────────────────────────────
 object Routes {
@@ -15,6 +16,7 @@ object Routes {
     const val ONBOARDING  = "onboarding"
     const val LOGIN       = "login"
     const val HOME        = "home"
+    const val WORKOUT     = "Workout"
 }
 
 /**
@@ -66,7 +68,21 @@ fun NavGraph() {
 
         // ── Home (Contém as Abas: Treino, Ranking e Perfil) ──────────────
         composable(Routes.HOME) {
-            HomeScreen()
+            HomeScreen(
+                onStartWorkoutClick = {
+                    navController.navigate(Routes.WORKOUT)
+                }
+            )
+        }
+
+        // ─── TELA CHEIA DE TREINO ───────────────────────────────────────────
+        composable(Routes.WORKOUT) {
+            WorkoutScreen(
+                onFinishWorkout = {
+                    // Destrói a tela de treino e volta para a Home limpando a pilha
+                    navController.popBackStack()
+                }
+            )
         }
     }
 }
