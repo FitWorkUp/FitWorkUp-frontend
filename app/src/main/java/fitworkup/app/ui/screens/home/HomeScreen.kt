@@ -2,16 +2,12 @@ package com.fitworkup.app.ui.screens.home
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState // 👈 Adicionado para suporte a rolagem
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll // 👈 Adicionado para suporte a rolagem
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DirectionsRun
 import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Storefront
 import androidx.compose.material.icons.outlined.DirectionsRun
 import androidx.compose.material.icons.outlined.EmojiEvents
@@ -23,13 +19,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.fitworkup.app.ui.components.MonthlyProgressCard
 import com.fitworkup.app.ui.screens.profile.ProfileScreen
 import com.fitworkup.app.ui.screens.store.StorePoints
-import com.fitworkup.app.ui.screens.ranking.RankingTabContent
 
 // ─── Definição das Abas da Bottom Nav ───────────────────────────────────────
 sealed class HomeTab(
@@ -106,101 +100,79 @@ fun HomeScreen(
 
 // ── Conteúdo da Aba de Treino (Com o Gráfico Integrado) ──────────────────
 
+@Preview(showBackground = true)
 @Composable
 private fun WorkoutTabContent(
     onStartWorkout: () -> Unit
 ) {
-    // Estado de rolagem para evitar que o ecrã quebre em telemóveis mais pequenos
-    val scrollState = rememberScrollState()
-
     Column(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
-            .padding(horizontal = 24.dp, vertical = 16.dp),
+            .padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // 1. Área de Conteúdo Rolável
-        Column(
-            modifier = Modifier
-                .weight(1f)
-                .verticalScroll(scrollState),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Top
+        // 1. CABEÇALHO: Perfil e Saldo de FitCoins
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Ícone animado/estático de corrida
-            Box(
-                modifier = Modifier
-                    .size(100.dp)
-                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f), CircleShape),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Default.DirectionsRun,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(50.dp)
-                )
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Text(
-                text = "Pronto para subir de nível?",
-                fontSize = 22.sp,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onBackground
-            )
-
-            Text(
-                text = "O sistema anti-fraude está ativo.",
-                fontSize = 14.sp,
-                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
-                textAlign = TextAlign.Center,
-                modifier = Modifier.padding(top = 4.dp)
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // 📊 O SEU GRÁFICO MENSAL ADICIONADO AQUI!
-            MonthlyProgressCard()
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            // Card de status dos sensores
-            Card(
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
-                shape = RoundedCornerShape(16.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Row(
-                    modifier = Modifier.padding(14.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.Center
-                ) {
-                    Icon(Icons.Default.Security, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Text("GPS e Acelerômetro Calibrados", fontSize = 14.sp, fontWeight = FontWeight.Medium)
+            // Perfil
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Surface(shape = CircleShape, color = MaterialTheme.colorScheme.primaryContainer, modifier = Modifier.size(40.dp)) {
+                    Icon(Icons.Default.Person, contentDescription = "Perfil", modifier = Modifier.padding(8.dp))
                 }
+                Spacer(modifier = Modifier.width(12.dp))
+                Text("Olá, Atleta!", fontWeight = FontWeight.Bold, fontSize = 16.sp)
             }
-
-            Spacer(modifier = Modifier.height(16.dp))
+            // Carteira
+            Surface(
+                shape = RoundedCornerShape(12.dp),
+                color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f)
+            ) {
+                Text("🪙 1.250 FitCoins", modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp), fontWeight = FontWeight.Bold)
+            }
         }
 
-        // 2. Botão Fixo na Base (Sempre visível abaixo do scroll)
+        // 2. KPI CENTRAL: Contador de Passos (Progresso circular)
+        // Aqui você usaria uma biblioteca de gráfico ou um Box com CircularProgressIndicator
+        Box(contentAlignment = Alignment.Center, modifier = Modifier.size(220.dp)) {
+            CircularProgressIndicator(progress = { 0.8f }, modifier = Modifier.fillMaxSize(), strokeWidth = 12.dp)
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text("8.432", fontSize = 32.sp, fontWeight = FontWeight.ExtraBold)
+                Text("PASSOS / 10.000", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+
+        Spacer(modifier = Modifier.height(32.dp))
+
+        // 3. DUETO DE PERFORMANCE: Distância e Calorias
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+            PerformanceCard("Distância", "3.2 km", Modifier.weight(1f))
+            PerformanceCard("Calorias", "512 kcal", Modifier.weight(1f))
+        }
+
+        Spacer(modifier = Modifier.weight(1f))
+
+        // 4. BOTÃO DE AÇÃO
         Button(
             onClick = onStartWorkout,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(64.dp),
-            shape = RoundedCornerShape(16.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+            modifier = Modifier.fillMaxWidth().height(60.dp),
+            shape = RoundedCornerShape(16.dp)
         ) {
-            Icon(Icons.Default.PlayArrow, contentDescription = null)
-            Spacer(modifier = Modifier.width(8.dp))
-            Text("INICIAR ATIVIDADE", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+            Text("INICIAR ATIVIDADE", fontWeight = FontWeight.Bold)
+        }
+    }
+}
+
+// Componente auxiliar para os cards do Dueto
+@Composable
+fun PerformanceCard(title: String, value: String, modifier: Modifier) {
+    Card(modifier = modifier, shape = RoundedCornerShape(16.dp)) {
+        Column(modifier = Modifier.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(title, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(value, fontSize = 20.sp, fontWeight = FontWeight.Bold)
         }
     }
 }
