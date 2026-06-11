@@ -6,9 +6,10 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.fitworkup.app.ui.screens.splash.SplashScreen
 import com.fitworkup.app.ui.screens.home.OnboardingScreen
-import com.fitworkup.app.ui.screens.home.LoginScreen // 👈 IMPORT CORRIGIDO (estava .home)
+import com.fitworkup.app.ui.screens.home.LoginScreen
 import com.fitworkup.app.ui.screens.home.HomeScreen
 import com.fitworkup.app.ui.screens.workout.WorkoutScreen
+import com.fitworkup.app.ui.screens.profile.ConfigScreen
 
 // ─── Rotas Principais (Telas Cheias) ────────────────────────────────────────
 object Routes {
@@ -17,6 +18,7 @@ object Routes {
     const val LOGIN       = "login"
     const val HOME        = "home"
     const val WORKOUT     = "Workout"
+    const val CONFIG      = "config"
 }
 
 /**
@@ -71,6 +73,17 @@ fun NavGraph() {
             HomeScreen(
                 onStartWorkoutClick = {
                     navController.navigate(Routes.WORKOUT)
+                },
+                onSettingsClick = {
+                    navController.navigate(Routes.CONFIG)
+                }
+            )
+        }
+        composable(Routes.CONFIG) {
+            ConfigScreen(
+                onBackClick = {
+                    // Remove a tela de configuração da pilha e volta para onde o usuário estava (Aba Perfil)
+                    navController.popBackStack()
                 }
             )
         }

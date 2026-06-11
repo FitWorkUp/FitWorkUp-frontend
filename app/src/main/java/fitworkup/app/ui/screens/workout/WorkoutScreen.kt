@@ -23,7 +23,7 @@ import androidx.compose.ui.unit.sp
 
 @Composable
 fun WorkoutScreen(
-    onFinishWorkout: () -> Unit
+    onFinishWorkout: () -> Unit // 👈 Parâmetro adicionado para conversar com o NavGraph
 ) {
     // Estado para controlar se o usuário iniciou a corrida ou está na tela inicial
     var isRunning by remember { mutableStateOf(false) }
@@ -89,7 +89,7 @@ fun WorkoutScreen(
                     ) {
                         Icon(Icons.Default.Security, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                         Spacer(modifier = Modifier.width(12.dp))
-                        // 👈 CORRIGIDO: fontSize alterado para 14.sp puro
+                        // 👈 CORRIGIDO: Removido o erro de conversão .dp.value.sp antiga
                         Text("GPS e Acelerômetro Calibrados", fontSize = 14.sp, fontWeight = FontWeight.Medium)
                     }
                 }
@@ -97,7 +97,7 @@ fun WorkoutScreen(
 
             // Botão Gigante de Iniciar
             Button(
-                onClick = onFinishWorkout,
+                onClick = { isRunning = true },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(64.dp),
@@ -123,7 +123,7 @@ fun WorkoutScreen(
                 ), label = "alpha"
             )
 
-            // 👈 CORRIGIDO: Adicionado Modifier e limpo o padding corrompido
+            // 👈 CORRIGIDO: Removido o código de texto corrompido que causava erro no padding
             Card(
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)),
                 shape = RoundedCornerShape(20.dp),
@@ -166,9 +166,13 @@ fun WorkoutScreen(
 
             // 3. Grid de Métricas Secundárias e Gamificação
             Column(modifier = Modifier.fillMaxWidth()) {
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    MetricBox(title = "Ritmo (Pace)", value = "5'42\" /km")
-                    MetricBox(title = "Ganho Estimado", value = "🪙 +18 Moedas")
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    // Distribui proporcionalmente os cards na tela usando weight(1f)
+                    MetricBox(title = "Ritmo (Pace)", value = "5'42\" /km", modifier = Modifier.weight(1f).padding(end = 4.dp))
+                    MetricBox(title = "Ganho Estimado", value = "🪙 +18 Moedas", modifier = Modifier.weight(1f).padding(start = 4.dp))
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -204,9 +208,9 @@ fun WorkoutScreen(
                     Icon(Icons.Default.Pause, contentDescription = "Pausar", modifier = Modifier.size(28.dp))
                 }
 
-                // Botão de Parar
+                // Botão de Parar (Chama o encerramento seguro e retorna à Home)
                 Button(
-                    onClick = { isRunning = false },
+                    onClick = onFinishWorkout, // 👈 Vinculado ao callback de fechar tela
                     modifier = Modifier.size(72.dp),
                     shape = CircleShape,
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
@@ -220,9 +224,9 @@ fun WorkoutScreen(
 }
 
 @Composable
-private fun MetricBox(title: String, value: String) {
+private fun MetricBox(title: String, value: String, modifier: Modifier = Modifier) {
     Card(
-        modifier = Modifier.width(150.dp),
+        modifier = modifier,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
     ) {
         Column(modifier = Modifier.padding(16.dp)) {

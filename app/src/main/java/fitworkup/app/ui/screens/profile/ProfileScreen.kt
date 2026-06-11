@@ -1,169 +1,211 @@
 package com.fitworkup.app.ui.screens.profile
 
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.DirectionsRun
-import androidx.compose.material.icons.outlined.Language
-import androidx.compose.material.icons.outlined.Settings
-import androidx.compose.material.icons.outlined.Share
-import androidx.compose.material.icons.outlined.StarOutline
+import androidx.compose.material.icons.filled.EmojiEvents
+import androidx.compose.material.icons.filled.LocalFireDepartment
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Timeline
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.graphics.Color
 
 @Composable
-fun ProfileScreen() {
-    val scrollState = rememberScrollState()
-
+fun ProfileScreen(
+    onSettingsClick: () -> Unit = {} // Abre a tela antiga de configurações se clicado
+) {
     Column(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
-            .verticalScroll(scrollState)
             .padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // ─── 1. CARD DO ATLETA (Status do Jogo) ─────────────────────────────────
-        Spacer(modifier = Modifier.height(16.dp))
-        Box(
-            modifier = Modifier
-                .size(90.dp)
-                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f), CircleShape),
-            contentAlignment = Alignment.Center
+        // ─── TOP BAR DA TELA DE PERFIL ──────────────────────────────────────
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            // Placeholder de Avatar. No futuro, pode ter a borda conquistada no ranking!
-            Text(text = "🛡️", fontSize = 42.sp)
+            Text(
+                text = "Meu Perfil",
+                fontSize = 22.sp,
+                fontWeight = FontWeight.ExtraBold,
+                color = MaterialTheme.colorScheme.onBackground
+            )
+            IconButton(onClick = onSettingsClick) {
+                Icon(
+                    imageVector = Icons.Default.Settings,
+                    contentDescription = "Configurações",
+                    tint = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f)
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // ─── AVATAR COM MOLDURA CUSTOMIZADA (LOJA) ──────────────────────────
+        Box(contentAlignment = Alignment.Center) {
+            // Círculo de moldura externa (simulando item comprado na loja)
+            Box(
+                modifier = Modifier
+                    .size(100.dp)
+                    .border(3.dp, MaterialTheme.colorScheme.primary, CircleShape) // Cor vermelha/laranja do sistema
+                    .padding(6.dp)
+            ) {
+                Surface(
+                    shape = CircleShape,
+                    color = MaterialTheme.colorScheme.surfaceVariant,
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Person,
+                        contentDescription = "Avatar",
+                        modifier = Modifier.padding(16.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
+            // Badge com o nível atual cravado no fundo do avatar
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(8.dp))
+                    .padding(horizontal = 6.dp, vertical = 2.dp)
+            ) {
+                Text("LVL 12", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.White)
+            }
         }
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        Text(
-            text = "Atleta_Fit",
-            fontSize = 22.sp,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onBackground
-        )
+        Text(text = "Atleta_Fit", fontSize = 20.sp, fontWeight = FontWeight.Bold)
+        Text(text = "Título: Mestre do Suor 🏃‍♂️", fontSize = 13.sp, color = MaterialTheme.colorScheme.primary)
 
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
-            modifier = Modifier.padding(top = 8.dp)
-        ) {
-            Text(text = "Nível 12", fontSize = 14.sp, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
-            Text(text = "🪙 1.450 Moedas", fontSize = 14.sp, color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f))
+        Spacer(modifier = Modifier.height(20.dp))
+
+        // ─── PROGRESSO DE XP PARA O PRÓXIMO NÍVEL ──────────────────────────
+        Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp)) {
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Text("Progresso de XP", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("1.450 / 2.000 XP", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+            }
+            Spacer(modifier = Modifier.height(6.dp))
+            LinearProgressIndicator(
+                progress = { 0.72f },
+                modifier = Modifier.fillMaxWidth().height(8.dp).clip(RoundedCornerShape(4.dp)),
+                color = MaterialTheme.colorScheme.primary,
+                trackColor = MaterialTheme.colorScheme.surfaceVariant
+            )
         }
 
-        Spacer(modifier = Modifier.height(32.dp))
+        Spacer(modifier = Modifier.height(24.dp))
 
-        // ─── 2. SEÇÃO: DEFINIÇÃO ───────────────────────────────────────────────
-        SectionHeader(title = "DEFINIÇÃO")
-
-        ProfileMenuItem(
-            icon = Icons.Outlined.DirectionsRun,
-            iconContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
-            iconColor = MaterialTheme.colorScheme.primary,
-            title = "Configurações do treino",
-            subtitle = "Timer, alertas de voz e calibração de sensores",
-            onClick = { /* TODO */ }
-        )
-
-        ProfileMenuItem(
-            icon = Icons.Outlined.Settings,
-            iconContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-            iconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-            title = "Definições gerais",
-            subtitle = "Dados da conta, segurança e tema",
-            onClick = { /* TODO */ }
-        )
-
-        ProfileMenuItem(
-            icon = Icons.Outlined.Language,
-            iconContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-            iconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-            title = "Opção de Língua",
-            subtitle = "Português (BR)",
-            onClick = { /* TODO */ }
-        )
+        // ─── METRICAS DE HISTÓRICO ACUMULADO ────────────────────────────────
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            ProfileStatCard(Icons.Default.Timeline, "124 km", "Total Rodado", Modifier.weight(1f))
+            ProfileStatCard(Icons.Default.LocalFireDepartment, "7 Dias", "Sequência", Modifier.weight(1f))
+        }
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        // ─── 3. SEÇÃO: AJUDE-NOS ───────────────────────────────────────────────
-        SectionHeader(title = "AJUDE-NOS")
-
-        ProfileMenuItem(
-            icon = Icons.Outlined.StarOutline,
-            iconContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-            iconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-            title = "Nos Avalie",
-            subtitle = "Apoie o FitWorkUp na Play Store",
-            onClick = { /* TODO */ }
+        // ─── CONQUISTAS / BADGES (GAMIFICAÇÃO) ──────────────────────────────
+        Text(
+            text = "Minhas Conquistas",
+            fontSize = 16.sp,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
+            textAlign = TextAlign.Start
         )
 
-        ProfileMenuItem(
-            icon = Icons.Outlined.Share,
-            iconContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-            iconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-            title = "Compartilhe com um amigo",
-            subtitle = "Convide atletas e ganhe bônus de Moedas",
-            onClick = { /* TODO */ }
+        val badgesMock = listOf(
+            BadgeItem("Primeiros 5k", true),
+            BadgeItem("Anti-Cheat Master", true),
+            BadgeItem("Consistente", true),
+            BadgeItem("Maratonista", false),
+            BadgeItem("Semanal 100%", false)
         )
 
-        Spacer(modifier = Modifier.height(24.dp))
+        LazyVerticalGrid(
+            columns = GridCells.Fixed(3),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+            modifier = Modifier.fillMaxWidth().weight(1f)
+        ) {
+            items(badgesMock) { badge ->
+                BadgeCard(badge)
+            }
+        }
+    }
+}
+
+// ─── COMPONENTES AUXILIARES DO PERFIL ───────────────────────────────────────
+
+@Composable
+fun ProfileStatCard(icon: ImageVector, value: String, label: String, modifier: Modifier) {
+    Card(
+        modifier = modifier,
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
+    ) {
+        Column(modifier = Modifier.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+            Icon(icon, contentDescription = label, tint = MaterialTheme.colorScheme.primary)
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(value, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+            Text(label, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
     }
 }
 
 @Composable
-private fun SectionHeader(title: String) {
-    Text(
-        text = title,
-        fontSize = 12.sp,
-        fontWeight = FontWeight.Bold,
-        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.4f),
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 8.dp, horizontal = 4.dp),
-        letterSpacing = 1.sp
-    )
+fun BadgeCard(badge: BadgeItem) {
+    val alpha = if (badge.unlocked) 1f else 0.3f // Apaga a medalha se estiver bloqueada
+    Card(
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = if (badge.unlocked) 0.5f else 0.1f)
+        ),
+        modifier = Modifier.height(90.dp)
+    ) {
+        Column(
+            modifier = Modifier.fillMaxSize().padding(8.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Icon(
+                imageVector = Icons.Default.EmojiEvents,
+                contentDescription = badge.name,
+                tint = if (badge.unlocked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = alpha),
+                modifier = Modifier.size(28.dp)
+            )
+            Spacer(modifier = Modifier.height(6.dp))
+            Text(
+                text = badge.name,
+                fontSize = 10.sp,
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center,
+                lineHeight = 12.sp,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = alpha)
+            )
+        }
+    }
 }
 
-@Composable
-private fun ProfileMenuItem(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    iconContainerColor: androidx.compose.ui.graphics.Color,
-    iconColor: androidx.compose.ui.graphics.Color,
-    title: String,
-    subtitle: String,
-    onClick: () -> Unit
-) {
-    ListItem(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
-            .clickable { onClick() },
-        headlineContent = { Text(text = title, fontWeight = FontWeight.Medium, fontSize = 15.sp) },
-        supportingContent = { Text(text = subtitle, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)) },
-        leadingContent = {
-            Box(
-                modifier = Modifier
-                    .size(40.dp)
-                    .background(iconContainerColor, RoundedCornerShape(10.dp)),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(imageVector = icon, contentDescription = null, tint = iconColor, modifier = Modifier.size(22.dp))
-            }
-        },
-        colors = ListItemDefaults.colors(containerColor = Color.Transparent)
-    )
-}
+data class BadgeItem(val name: String, val unlocked: Boolean)

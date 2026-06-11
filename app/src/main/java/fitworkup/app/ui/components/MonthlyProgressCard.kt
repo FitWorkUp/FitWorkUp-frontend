@@ -103,7 +103,7 @@ fun MonthlyProgressCard() {
             // Força o gráfico a rolar automaticamente para o final ao mudar de mês
             LaunchedEffect(monthlyData) {
                 if (monthlyData.isNotEmpty()) {
-                    listState.scrollToItem(monthlyData.lastIndex)
+                    listState.animateScrollToItem(monthlyData.lastIndex)
                 }
             }
 

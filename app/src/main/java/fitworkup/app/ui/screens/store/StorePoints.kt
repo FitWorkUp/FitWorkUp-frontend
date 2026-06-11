@@ -64,7 +64,7 @@ fun StorePoints() {
                     )
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
-                        text = "1,450 FWC",
+                        text = "1,450 FC",
                         fontSize = 26.sp,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onPrimaryContainer
@@ -90,7 +90,7 @@ fun StorePoints() {
         StoreItemRow(
             title = "Multiplicador de XP (2h)",
             description = "Dobre o XP ganho nas suas corridas pelas próximas duas horas.",
-            price = "300 FWC",
+            price = "300 FC",
             icon = Icons.Default.FlashOn,
             iconColor = Color(0xFFFF9800)
         )
@@ -101,7 +101,7 @@ fun StorePoints() {
         StoreItemRow(
             title = "Emblema 'Velocidade da Luz'",
             description = "Exiba um fundo animado exclusivo no seu perfil e ranking semanal.",
-            price = "800 FWC",
+            price = "800 FC",
             icon = Icons.Default.Star,
             iconColor = Color(0xFF9C27B0)
         )
