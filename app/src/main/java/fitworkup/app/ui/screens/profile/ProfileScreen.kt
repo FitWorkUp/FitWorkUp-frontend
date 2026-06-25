@@ -10,6 +10,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.EmojiEvents
+import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.LocalFireDepartment
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Settings
@@ -28,7 +29,8 @@ import androidx.compose.ui.unit.sp
 
 @Composable
 fun ProfileScreen(
-    onSettingsClick: () -> Unit = {} // Abre a tela antiga de configurações se clicado
+    onSettingsClick: () -> Unit = {},
+    onAddFriendClick: () -> Unit = {} // 🟢 ADICIONADO: Função para expor a ação do botão
 ) {
     Column(
         modifier = Modifier
@@ -60,13 +62,12 @@ fun ProfileScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // ─── AVATAR COM MOLDURA CUSTOMIZADA (LOJA) ──────────────────────────
+        // ─── AVATAR COM MOLDURA CUSTOMIZADA ──────────────────────────
         Box(contentAlignment = Alignment.Center) {
-            // Círculo de moldura externa (simulando item comprado na loja)
             Box(
                 modifier = Modifier
                     .size(100.dp)
-                    .border(3.dp, MaterialTheme.colorScheme.primary, CircleShape) // Cor vermelha/laranja do sistema
+                    .border(3.dp, MaterialTheme.colorScheme.primary, CircleShape)
                     .padding(6.dp)
             ) {
                 Surface(
@@ -83,7 +84,6 @@ fun ProfileScreen(
                 }
             }
 
-            // Badge com o nível atual cravado no fundo do avatar
             Box(
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
@@ -116,7 +116,53 @@ fun ProfileScreen(
             )
         }
 
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // ─── HUB CENTRAL DE GERENCIAMENTO DE AMIGOS Corrigido ─────────────────
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
+            )
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                // ✏️ EDITADO: Adicionado .weight(1f) nesta Row interna para empurrar o botão de forma fluida
+                Row(
+                    modifier = Modifier.weight(1f),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Group,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Column {
+                        Text(text = "Meus Amigos", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                        Text(text = "34 conexões no FitWorkUp", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+
+                Spacer(modifier = Modifier.width(8.dp)) // 🟢 ADICIONADO: Garante um espaçamento mínimo de segurança
+
+                Button(
+                    onClick = onAddFriendClick, // ✏️ EDITADO: Vinculado à função de callback externa
+                    shape = RoundedCornerShape(12.dp),
+                    contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+                ) {
+                    Text("Adicionar", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
 
         // ─── METRICAS DE HISTÓRICO ACUMULADO ────────────────────────────────
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -124,9 +170,9 @@ fun ProfileScreen(
             ProfileStatCard(Icons.Default.LocalFireDepartment, "7 Dias", "Sequência", Modifier.weight(1f))
         }
 
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(20.dp))
 
-        // ─── CONQUISTAS / BADGES (GAMIFICAÇÃO) ──────────────────────────────
+        // ─── CONQUISTAS / BADGES ──────────────────────────────
         Text(
             text = "Minhas Conquistas",
             fontSize = 16.sp,
@@ -156,8 +202,6 @@ fun ProfileScreen(
     }
 }
 
-// ─── COMPONENTES AUXILIARES DO PERFIL ───────────────────────────────────────
-
 @Composable
 fun ProfileStatCard(icon: ImageVector, value: String, label: String, modifier: Modifier) {
     Card(
@@ -176,7 +220,7 @@ fun ProfileStatCard(icon: ImageVector, value: String, label: String, modifier: M
 
 @Composable
 fun BadgeCard(badge: BadgeItem) {
-    val alpha = if (badge.unlocked) 1f else 0.3f // Apaga a medalha se estiver bloqueada
+    val alpha = if (badge.unlocked) 1f else 0.3f
     Card(
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(

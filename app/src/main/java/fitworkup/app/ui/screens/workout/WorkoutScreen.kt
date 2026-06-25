@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.DirectionsRun
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Security
@@ -20,13 +19,27 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.delay // 👈 Adicionado para gerenciar o tempo do timer
 
 @Composable
 fun WorkoutScreen(
-    onFinishWorkout: () -> Unit // 👈 Parâmetro adicionado para conversar com o NavGraph
+    onFinishWorkout: () -> Unit
 ) {
-    // Estado para controlar se o usuário iniciou a corrida ou está na tela inicial
     var isRunning by remember { mutableStateOf(false) }
+    // 👈 Novo estado para controlar os segundos da calibração
+    var countdown by remember { mutableStateOf(3) }
+
+    // ─── LÓGICA DA CONTAGEM REGRESSIVA AUTOMÁTICA ─────────────────────────
+    if (!isRunning) {
+        LaunchedEffect(countdown) {
+            if (countdown > 0) {
+                delay(1000L) // Aguarda exatamente 1 segundo
+                countdown--
+            } else {
+                isRunning = true // Dispara o treino automaticamente quando zera
+            }
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -37,27 +50,28 @@ fun WorkoutScreen(
         verticalArrangement = Arrangement.SpaceBetween
     ) {
         if (!isRunning) {
-            // ─── TELA INICIAL (ANTES DE COMEÇAR) ──────────────────────────────────
+            // ─── TELA DE PREPARAÇÃO E CALIBRAÇÃO AUTOMÁTICA ───────────────────
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.Center
             ) {
+                // Círculo centralizado que agora mostra o número da contagem animado
                 Box(
                     modifier = Modifier
-                        .size(120.dp)
+                        .size(140.dp)
                         .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f), CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.DirectionsRun,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(60.dp)
+                    Text(
+                        text = if (countdown > 0) countdown.toString() else "VAI!",
+                        fontSize = 54.sp,
+                        fontWeight = FontWeight.Black,
+                        color = MaterialTheme.colorScheme.primary
                     )
                 }
 
-                Spacer(modifier = Modifier.height(24.dp))
+                Spacer(modifier = Modifier.height(32.dp))
 
                 Text(
                     text = "Pronto para subir de nível?",
@@ -76,7 +90,6 @@ fun WorkoutScreen(
 
                 Spacer(modifier = Modifier.height(32.dp))
 
-                // Card de status dos sensores
                 Card(
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
                     shape = RoundedCornerShape(16.dp),
@@ -89,30 +102,25 @@ fun WorkoutScreen(
                     ) {
                         Icon(Icons.Default.Security, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                         Spacer(modifier = Modifier.width(12.dp))
-                        // 👈 CORRIGIDO: Removido o erro de conversão .dp.value.sp antiga
-                        Text("GPS e Acelerômetro Calibrados", fontSize = 14.sp, fontWeight = FontWeight.Medium)
+                        Text("Calibrando GPS e Acelerômetro...", fontSize = 14.sp, fontWeight = FontWeight.Medium)
                     }
                 }
             }
 
-            // Botão Gigante de Iniciar
-            Button(
-                onClick = { isRunning = true },
+            // Barra de carregamento discreta no rodapé para indicar que o app está trabalhando sozinho
+            LinearProgressIndicator(
+                progress = { (3 - countdown) / 3f },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(64.dp),
-                shape = RoundedCornerShape(16.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
-            ) {
-                Icon(Icons.Default.PlayArrow, contentDescription = null)
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("INICIAR ATIVIDADE", fontSize = 18.sp, fontWeight = FontWeight.Bold)
-            }
+                    .padding(bottom = 24.dp)
+                    .height(6.dp)
+                    .clip(CircleShape),
+                color = MaterialTheme.colorScheme.primary,
+                trackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
+            )
 
         } else {
-            // ─── TELA ATIVA (DURANTE A CORRIDA) ───────────────────────────────────
-
-            // 1. Indicador Anti-Cheat Ativo (Animação de Pulso)
+            // ─── TELA ATIVA (DURANTE A CORRIDA - SEM ALTERAÇÕES DE LAYOUT) ─────
             val infiniteTransition = rememberInfiniteTransition(label = "pulse")
             val alphaAnimation by infiniteTransition.animateFloat(
                 initialValue = 0.3f,
@@ -123,7 +131,6 @@ fun WorkoutScreen(
                 ), label = "alpha"
             )
 
-            // 👈 CORRIGIDO: Removido o código de texto corrompido que causava erro no padding
             Card(
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)),
                 shape = RoundedCornerShape(20.dp),
@@ -149,7 +156,6 @@ fun WorkoutScreen(
                 }
             }
 
-            // 2. Cronômetro e Distância Principal
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier.padding(vertical = 24.dp)
@@ -164,20 +170,17 @@ fun WorkoutScreen(
                 )
             }
 
-            // 3. Grid de Métricas Secundárias e Gamificação
             Column(modifier = Modifier.fillMaxWidth()) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    // Distribui proporcionalmente os cards na tela usando weight(1f)
                     MetricBox(title = "Ritmo (Pace)", value = "5'42\" /km", modifier = Modifier.weight(1f).padding(end = 4.dp))
                     MetricBox(title = "Ganho Estimado", value = "🪙 +18 Moedas", modifier = Modifier.weight(1f).padding(start = 4.dp))
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Barra de XP acumulando na corrida
                 Text(text = "Progresso de XP da Corrida (+140 XP)", fontSize = 12.sp, color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f))
                 LinearProgressIndicator(
                     progress = { 0.65f },
@@ -191,14 +194,12 @@ fun WorkoutScreen(
                 )
             }
 
-            // 4. Botões de Controle Grandes
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(bottom = 16.dp),
                 horizontalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterHorizontally)
             ) {
-                // Botão de Pausa
                 FilledTonalButton(
                     onClick = { /* TODO: Pausar */ },
                     modifier = Modifier.size(72.dp),
@@ -208,9 +209,8 @@ fun WorkoutScreen(
                     Icon(Icons.Default.Pause, contentDescription = "Pausar", modifier = Modifier.size(28.dp))
                 }
 
-                // Botão de Parar (Chama o encerramento seguro e retorna à Home)
                 Button(
-                    onClick = onFinishWorkout, // 👈 Vinculado ao callback de fechar tela
+                    onClick = onFinishWorkout,
                     modifier = Modifier.size(72.dp),
                     shape = CircleShape,
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
