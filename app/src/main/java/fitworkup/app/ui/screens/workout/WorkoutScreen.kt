@@ -15,28 +15,75 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import kotlinx.coroutines.delay // 👈 Adicionado para gerenciar o tempo do timer
-
+import androidx.lifecycle.viewmodel.compose.viewModel
+import kotlinx.coroutines.delay
+import android.Manifest
+import android.content.Context
+import android.content.pm.PackageManager
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
 @Composable
 fun WorkoutScreen(
-    onFinishWorkout: () -> Unit
+    onFinishWorkout: () -> Unit,
+    viewModel: WorkoutViewModel = viewModel()
 ) {
-    var isRunning by remember { mutableStateOf(false) }
-    // 👈 Novo estado para controlar os segundos da calibração
-    var countdown by remember { mutableStateOf(3) }
+    val context = LocalContext.current
+    val uiState by viewModel.uiState.collectAsState()
 
-    // ─── LÓGICA DA CONTAGEM REGRESSIVA AUTOMÁTICA ─────────────────────────
-    if (!isRunning) {
+    var isRunning by remember { mutableStateOf(false) }
+    var countdown by remember { mutableStateOf(3) }
+    var hasPermissions by remember { mutableStateOf(false) }
+
+    // Lista de permissões necessárias conforme a versão do Android
+    val permissionsToRequest = remember {
+        mutableListOf(
+            Manifest.permission.ACCESS_FINE_LOCATION,
+            Manifest.permission.ACCESS_COARSE_LOCATION,
+            Manifest.permission.ACTIVITY_RECOGNITION
+        ).apply {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                add(Manifest.permission.POST_NOTIFICATIONS)
+            }
+        }.toTypedArray()
+    }
+
+    // Solicitador de Permissões do Compose
+    val permissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        val allGranted = permissions.values.all { it }
+        hasPermissions = allGranted
+    }
+
+    // Pede as permissões assim que a tela abre
+    LaunchedEffect(Unit) {
+        val permissionsGranted = permissionsToRequest.all { permission ->
+            ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED
+        }
+
+        if (!permissionsGranted) {
+            permissionLauncher.launch(permissionsToRequest)
+        } else {
+            hasPermissions = true
+        }
+    }
+
+    // ─── SÓ INICIA A CONTAGEM SE TIVER AS PERMISSÕES CONCEDIDAS ───────
+    if (!isRunning && hasPermissions) {
         LaunchedEffect(countdown) {
             if (countdown > 0) {
-                delay(1000L) // Aguarda exatamente 1 segundo
+                delay(1000L)
                 countdown--
             } else {
-                isRunning = true // Dispara o treino automaticamente quando zera
+                isRunning = true
+                viewModel.startWorkout(context) // Agora executa com segurança!
             }
         }
     }
@@ -56,7 +103,6 @@ fun WorkoutScreen(
                 modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.Center
             ) {
-                // Círculo centralizado que agora mostra o número da contagem animado
                 Box(
                     modifier = Modifier
                         .size(140.dp)
@@ -107,7 +153,6 @@ fun WorkoutScreen(
                 }
             }
 
-            // Barra de carregamento discreta no rodapé para indicar que o app está trabalhando sozinho
             LinearProgressIndicator(
                 progress = { (3 - countdown) / 3f },
                 modifier = Modifier
@@ -120,7 +165,7 @@ fun WorkoutScreen(
             )
 
         } else {
-            // ─── TELA ATIVA (DURANTE A CORRIDA - SEM ALTERAÇÕES DE LAYOUT) ─────
+            // ─── TELA ATIVA COM DADOS REAIS DOS SENSORES ──────────────────────
             val infiniteTransition = rememberInfiniteTransition(label = "pulse")
             val alphaAnimation by infiniteTransition.animateFloat(
                 initialValue = 0.3f,
@@ -160,9 +205,16 @@ fun WorkoutScreen(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier.padding(vertical = 24.dp)
             ) {
-                Text(text = "00:14:25", fontSize = 54.sp, fontWeight = FontWeight.Light, letterSpacing = (-1).sp)
+                // Tempo Decorrido Real
                 Text(
-                    text = "1.82 km",
+                    text = uiState.timeFormatted,
+                    fontSize = 54.sp,
+                    fontWeight = FontWeight.Light,
+                    letterSpacing = (-1).sp
+                )
+                // Distância Real do GPS
+                Text(
+                    text = uiState.distanceKmFormatted,
                     fontSize = 32.sp,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary,
@@ -175,15 +227,27 @@ fun WorkoutScreen(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    MetricBox(title = "Ritmo (Pace)", value = "5'42\" /km", modifier = Modifier.weight(1f).padding(end = 4.dp))
-                    MetricBox(title = "Ganho Estimado", value = "🪙 +18 Moedas", modifier = Modifier.weight(1f).padding(start = 4.dp))
+                    MetricBox(
+                        title = "Ritmo (Pace)",
+                        value = uiState.paceFormatted,
+                        modifier = Modifier.weight(1f).padding(end = 4.dp)
+                    )
+                    MetricBox(
+                        title = "Ganho Estimado",
+                        value = "🪙 +${uiState.fitCoinsEarned} Moedas",
+                        modifier = Modifier.weight(1f).padding(start = 4.dp)
+                    )
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                Text(text = "Progresso de XP da Corrida (+140 XP)", fontSize = 12.sp, color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f))
+                Text(
+                    text = "Progresso de XP da Corrida (+${uiState.xpEarned} XP | ${uiState.steps} passos)",
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
+                )
                 LinearProgressIndicator(
-                    progress = { 0.65f },
+                    progress = { uiState.xpProgress },
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(top = 6.dp)
@@ -194,29 +258,50 @@ fun WorkoutScreen(
                 )
             }
 
+            // ─── BOTÕES DE CONTROLE (PAUSAR / CONTINUAR / PARAR) ───────────────
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(bottom = 16.dp),
                 horizontalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterHorizontally)
             ) {
+                // Botão de Pausa / Retomada
                 FilledTonalButton(
-                    onClick = { /* TODO: Pausar */ },
+                    onClick = {
+                        if (uiState.isPaused) {
+                            viewModel.resumeWorkout()
+                        } else {
+                            viewModel.pauseWorkout()
+                        }
+                    },
                     modifier = Modifier.size(72.dp),
                     shape = CircleShape,
                     contentPadding = PaddingValues(0.dp)
                 ) {
-                    Icon(Icons.Default.Pause, contentDescription = "Pausar", modifier = Modifier.size(28.dp))
+                    Icon(
+                        imageVector = if (uiState.isPaused) Icons.Default.PlayArrow else Icons.Default.Pause,
+                        contentDescription = if (uiState.isPaused) "Continuar" else "Pausar",
+                        modifier = Modifier.size(28.dp)
+                    )
                 }
 
+                // Botão de Parar e Finalizar
                 Button(
-                    onClick = onFinishWorkout,
+                    onClick = {
+                        viewModel.stopWorkout(context)
+                        onFinishWorkout()
+                    },
                     modifier = Modifier.size(72.dp),
                     shape = CircleShape,
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
                     contentPadding = PaddingValues(0.dp)
                 ) {
-                    Icon(Icons.Default.Stop, contentDescription = "Parar", tint = MaterialTheme.colorScheme.onError, modifier = Modifier.size(28.dp))
+                    Icon(
+                        imageVector = Icons.Default.Stop,
+                        contentDescription = "Parar",
+                        tint = MaterialTheme.colorScheme.onError,
+                        modifier = Modifier.size(28.dp)
+                    )
                 }
             }
         }

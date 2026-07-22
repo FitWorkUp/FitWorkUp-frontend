@@ -65,4 +65,5 @@ dependencies {
     debugImplementation(libs.androidx.compose.ui.tooling)
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.0")
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.8.0")
+    implementation("com.google.android.gms:play-services-location:21.3.0")
 }

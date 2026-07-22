@@ -2,6 +2,31 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
+    <!-- 1. Conectividade de Rede (Comunicação com o Spring Boot) -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
+    <!-- 2. Leitura do Sensor de Passos e Acelerômetro -->
+    <uses-permission android:name="android.permission.ACTIVITY_RECOGNITION" />
+
+    <!-- 3. Rastreamento de GPS (Caminhada e Corrida) -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+
+    <!-- 4. Notificação e Execução em Segundo Plano (Android 13+ e 14+) -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_HEALTH" />
+
+    <!-- Hardware de Sensores (Evita bloquear a instalação em celulares sem contador físico) -->
+    <uses-feature
+        android:name="android.hardware.sensor.stepcounter"
+        android:required="false" />
+    <uses-feature
+        android:name="android.hardware.location.gps"
+        android:required="false" />
+
     <application
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
@@ -21,6 +46,13 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- Registra o Serviço do Sensor para Rastreamento em Segundo Plano -->
+        <service
+            android:name=".service.WorkoutSensorService"
+            android:enabled="true"
+            android:exported="false"
+            android:foregroundServiceType="location|health" />
 
     </application>
 
