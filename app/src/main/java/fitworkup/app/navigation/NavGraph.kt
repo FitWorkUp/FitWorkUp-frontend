@@ -8,10 +8,8 @@ import com.fitworkup.app.ui.screens.splash.SplashScreen
 import com.fitworkup.app.ui.screens.home.OnboardingScreen
 import com.fitworkup.app.ui.screens.home.LoginScreen
 import com.fitworkup.app.ui.screens.home.HomeScreen
-import com.fitworkup.app.ui.screens.workout.WorkoutScreen
 import com.fitworkup.app.ui.screens.profile.ConfigScreen
-
-// ─── Rotas Principais (Telas Cheias) ────────────────────────────────────────
+import com.fitworkup.app.ui.screens.workout.WorkoutScreen
 object Routes {
     const val SPLASH      = "splash"
     const val ONBOARDING  = "onboarding"
@@ -21,11 +19,6 @@ object Routes {
     const val CONFIG      = "config"
 }
 
-/**
- * NavGraph
- *
- * Ponto central de navegação do FitWorkUp.
- */
 @Composable
 fun NavGraph() {
     val navController = rememberNavController()
@@ -34,67 +27,44 @@ fun NavGraph() {
         navController = navController,
         startDestination = Routes.SPLASH
     ) {
-
-        // ── Splash ───────────────────────────────────────────────────────
         composable(Routes.SPLASH) {
-            SplashScreen(
-                onNavigate = { route ->
-                    navController.navigate(route) {
-                        popUpTo(Routes.SPLASH) { inclusive = true }
-                    }
+            SplashScreen(onNavigate = { route ->
+                navController.navigate(route) {
+                    popUpTo(Routes.SPLASH) { inclusive = true }
                 }
-            )
+            })
         }
 
-        // ── Onboarding ───────────────────────────────────────────────────
         composable(Routes.ONBOARDING) {
-            OnboardingScreen(
-                onNavigateToLogin = {
-                    navController.navigate(Routes.LOGIN) {
-                        popUpTo(Routes.ONBOARDING) { inclusive = true }
-                    }
+            OnboardingScreen(onNavigateToLogin = {
+                navController.navigate(Routes.LOGIN) {
+                    popUpTo(Routes.ONBOARDING) { inclusive = true }
                 }
-            )
+            })
         }
 
-        // ── Login / Cadastro ─────────────────────────────────────────────
         composable(Routes.LOGIN) {
-            LoginScreen(
-                onNavigateToHome = {
-                    navController.navigate(Routes.HOME) {
-                        popUpTo(Routes.LOGIN) { inclusive = true }
-                    }
+            LoginScreen(onNavigateToHome = {
+                navController.navigate(Routes.HOME) {
+                    popUpTo(Routes.LOGIN) { inclusive = true }
                 }
-            )
+            })
         }
 
-        // ── Home (Contém as Abas: Treino, Ranking e Perfil) ──────────────
         composable(Routes.HOME) {
             HomeScreen(
-                onStartWorkoutClick = {
-                    navController.navigate(Routes.WORKOUT)
-                },
-                onSettingsClick = {
-                    navController.navigate(Routes.CONFIG)
-                }
-            )
-        }
-        composable(Routes.CONFIG) {
-            ConfigScreen(
-                onBackClick = {
-                    // Remove a tela de configuração da pilha e volta para onde o usuário estava (Aba Perfil)
-                    navController.popBackStack()
-                }
+                onStartWorkoutClick = { navController.navigate(Routes.WORKOUT) },
+                onSettingsClick = { navController.navigate(Routes.CONFIG) }
             )
         }
 
-        // ─── TELA CHEIA DE TREINO ───────────────────────────────────────────
+        composable(Routes.CONFIG) {
+            ConfigScreen(onBackClick = { navController.popBackStack() })
+        }
+
         composable(Routes.WORKOUT) {
             WorkoutScreen(
-                onFinishWorkout = {
-                    // Destrói a tela de treino e volta para a Home limpando a pilha
-                    navController.popBackStack()
-                }
+                onFinishWorkout = { navController.popBackStack() }
             )
         }
     }

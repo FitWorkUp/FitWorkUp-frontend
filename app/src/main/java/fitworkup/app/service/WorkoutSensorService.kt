@@ -1,5 +1,6 @@
 package com.fitworkup.app.service
 
+import android.Manifest
 import android.annotation.SuppressLint
 import android.app.Notification
 import android.app.NotificationChannel
@@ -8,6 +9,7 @@ import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.content.pm.ServiceInfo
 import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
@@ -18,6 +20,7 @@ import android.os.Build
 import android.os.IBinder
 import android.os.Looper
 import androidx.core.app.NotificationCompat
+import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationCallback
@@ -28,11 +31,12 @@ import com.google.android.gms.location.Priority
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import android.Manifest
 
 data class WorkoutState(
     val steps: Int = 0,
     val distanceMeters: Float = 0f,
+    val latitude: Double = 0.0,
+    val longitude: Double = 0.0,
     val speedMps: Float = 0f,
     val isTracking: Boolean = false
 )
@@ -41,16 +45,13 @@ class WorkoutSensorService : Service(), SensorEventListener {
 
     private val binder = LocalBinder()
 
-    // Estado reativo exposto para a UI (Jetpack Compose / ViewModel)
     private val _workoutState = MutableStateFlow(WorkoutState())
     val workoutState: StateFlow<WorkoutState> = _workoutState.asStateFlow()
 
-    // Gerenciador do Sensor de Passos
     private lateinit var sensorManager: SensorManager
     private var stepCounterSensor: Sensor? = null
-    private var initialStepCount: Int = -1 // Offset para calcular apenas passos da sessão atual
+    private var initialStepCount: Int = -1
 
-    // Gerenciador do GPS
     private lateinit var fusedLocationClient: FusedLocationProviderClient
     private lateinit var locationCallback: LocationCallback
     private var lastLocation: Location? = null
@@ -76,8 +77,6 @@ class WorkoutSensorService : Service(), SensorEventListener {
         return START_STICKY
     }
 
-    // --- 1. CONFIGURAÇÃO DE SENSORES E GPS ---
-
     private fun initSensors() {
         sensorManager = getSystemService(Context.SENSOR_SERVICE) as SensorManager
         stepCounterSensor = sensorManager.getDefaultSensor(Sensor.TYPE_STEP_COUNTER)
@@ -89,24 +88,36 @@ class WorkoutSensorService : Service(), SensorEventListener {
         locationCallback = object : LocationCallback() {
             override fun onLocationResult(locationResult: LocationResult) {
                 for (location in locationResult.locations) {
-                    updateDistance(location)
+                    updateLocationAndDistance(location)
                 }
             }
         }
     }
 
-    // --- 2. CONTROLE DO FLUXO DO TREINO ---
-
     private fun startWorkout() {
         createNotificationChannel()
-        startForeground(NOTIFICATION_ID, buildNotification())
 
-        // Registra sensor de passos
+        // 🔒 INICIALIZAÇÃO SEGURA DO FOREGROUND SERVICE COMPATÍVEL COM ANDROID 14+
+        val notification = buildNotification()
+        val serviceType = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION or ServiceInfo.FOREGROUND_SERVICE_TYPE_HEALTH
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION
+        } else {
+            0
+        }
+
+        ServiceCompat.startForeground(
+            this,
+            NOTIFICATION_ID,
+            notification,
+            serviceType
+        )
+
         stepCounterSensor?.let { sensor ->
             sensorManager.registerListener(this, sensor, SensorManager.SENSOR_DELAY_UI)
         }
 
-        // Registra atualizações do GPS (10 em 10 segundos)
         startLocationUpdates()
 
         _workoutState.value = _workoutState.value.copy(isTracking = true)
@@ -122,14 +133,10 @@ class WorkoutSensorService : Service(), SensorEventListener {
         _workoutState.value = _workoutState.value.copy(isTracking = false)
     }
 
-    // --- 3. CALLBACKS DOS SENSORES (PASSOS E LOCALIZAÇÃO) ---
-
     override fun onSensorChanged(event: SensorEvent?) {
         if (event?.sensor?.type == Sensor.TYPE_STEP_COUNTER) {
             val totalStepsSinceBoot = event.values[0].toInt()
 
-            // O SENSOR_TYPE_STEP_COUNTER retorna passos desde o boot.
-            // Guardamos o primeiro valor para calcular apenas a diferença do treino.
             if (initialStepCount == -1) {
                 initialStepCount = totalStepsSinceBoot
             }
@@ -144,7 +151,6 @@ class WorkoutSensorService : Service(), SensorEventListener {
 
     @SuppressLint("MissingPermission")
     private fun startLocationUpdates() {
-        // Garante que só chama o GPS se a permissão foi mesmo concedida
         val hasLocationPermission = ContextCompat.checkSelfPermission(
             this,
             Manifest.permission.ACCESS_FINE_LOCATION
@@ -166,21 +172,33 @@ class WorkoutSensorService : Service(), SensorEventListener {
         )
     }
 
-    private fun updateDistance(newLocation: Location) {
+    private fun updateLocationAndDistance(newLocation: Location) {
+        val isMock = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            newLocation.isMock
+        } else {
+            @Suppress("DEPRECATION")
+            newLocation.isFromMockProvider
+        }
+
+        if (isMock) return
+
         lastLocation?.let { previous ->
             val distance = previous.distanceTo(newLocation)
             if (distance > 2.0f) {
                 totalDistanceMeters += distance
-
-                _workoutState.value = _workoutState.value.copy(
-                    distanceMeters = totalDistanceMeters,
-                    speedMps = newLocation.speed // 👈 Pega a velocidade atual do GPS em m/s
-                )
             }
         }
+
         lastLocation = newLocation
+
+        _workoutState.value = _workoutState.value.copy(
+            latitude = newLocation.latitude,
+            longitude = newLocation.longitude,
+            distanceMeters = totalDistanceMeters,
+            speedMps = newLocation.speed
+        )
+        updateNotification()
     }
-    // --- 4. NOTIFICAÇÃO PERMANENTE (FOREGROUND) ---
 
     private fun buildNotification(): Notification {
         val state = _workoutState.value
@@ -189,7 +207,7 @@ class WorkoutSensorService : Service(), SensorEventListener {
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("FitWorkUp - Treino em Andamento")
             .setContentText("Passos: ${state.steps} | Distância: $kmText")
-            .setSmallIcon(android.R.drawable.ic_dialog_info) // Substitua pelo ícone do app
+            .setSmallIcon(android.R.drawable.ic_dialog_info)
             .setOngoing(true)
             .setOnlyAlertOnce(true)
             .build()
@@ -208,7 +226,7 @@ class WorkoutSensorService : Service(), SensorEventListener {
                 NotificationManager.IMPORTANCE_LOW
             )
             val manager = getSystemService(NotificationManager::class.java)
-            manager.createNotificationChannel(channel)
+            manager?.createNotificationChannel(channel)
         }
     }
 
@@ -218,7 +236,7 @@ class WorkoutSensorService : Service(), SensorEventListener {
         private const val CHANNEL_ID = "workout_sensor_channel"
         private const val NOTIFICATION_ID = 1001
 
-        private const val LOCATION_INTERVAL_MS = 10000L // 10 segundos
-        private const val LOCATION_FASTEST_INTERVAL_MS = 5000L // 5 segundos
+        private const val LOCATION_INTERVAL_MS = 10000L
+        private const val LOCATION_FASTEST_INTERVAL_MS = 5000L
     }
 }

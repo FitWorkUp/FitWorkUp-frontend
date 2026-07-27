@@ -1,4 +1,4 @@
-package com.fitworkup.app.ui.screens
+package com.fitworkup.app.ui.screens.ranking
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*

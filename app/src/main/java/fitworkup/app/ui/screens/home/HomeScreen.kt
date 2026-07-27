@@ -17,7 +17,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.fitworkup.app.ui.screens.RankingTabContent
+import com.fitworkup.app.ui.screens.ranking.RankingTabContent
 import com.fitworkup.app.ui.screens.home.components.WorkoutTabContent
 import com.fitworkup.app.ui.screens.profile.ProfileScreen
 import com.fitworkup.app.ui.screens.store.StorePoints
