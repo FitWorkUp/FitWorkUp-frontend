@@ -5,8 +5,8 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.fitworkup.app.ui.screens.splash.SplashScreen
-import com.fitworkup.app.ui.screens.home.OnboardingScreen
-import com.fitworkup.app.ui.screens.home.LoginScreen
+import com.fitworkup.app.ui.screens.login.OnboardingScreen
+import com.fitworkup.app.ui.screens.login.LoginScreen
 import com.fitworkup.app.ui.screens.home.HomeScreen
 import com.fitworkup.app.ui.screens.profile.ConfigScreen
 import com.fitworkup.app.ui.screens.workout.WorkoutScreen
