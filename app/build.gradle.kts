@@ -1,5 +1,4 @@
 import java.util.Properties
-
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -29,7 +28,7 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-        // 🎯 O manifestPlaceholders deve ficar obrigatoriamente dentro de defaultConfig
+        // 🎯 O manifestPlaceholders dentro de defaultConfig
         manifestPlaceholders["MAPS_API_KEY"] = properties.getProperty("MAPS_API_KEY", "")
     }
 
@@ -58,6 +57,7 @@ android {
 }
 
 dependencies {
+    implementation(libs.androidx.compose.runtime)
     // Core & Lifecycle
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
@@ -89,13 +89,13 @@ dependencies {
     // Location & Maps
     implementation(libs.maps.compose)
     implementation(libs.play.services.location)
-
-    // Ads
-    implementation(libs.ads.mobile.sdk)
-// Google Maps Compose & Play Services Location
     implementation("com.google.maps.android:maps-compose:4.3.3")
     implementation("com.google.android.gms:play-services-maps:18.2.0")
     implementation("com.google.android.gms:play-services-location:21.2.0")
+
+    // Ads
+    implementation(libs.ads.mobile.sdk)
+
     // Testing / Debug
     testImplementation(libs.junit)
     androidTestImplementation(platform(libs.androidx.compose.bom))
@@ -104,4 +104,8 @@ dependencies {
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
+
+    // Retrofit e Conversor Gson
+    implementation("com.squareup.retrofit2:retrofit:2.11.0")
+    implementation("com.squareup.retrofit2:converter-gson:2.11.0")
 }

@@ -2,11 +2,11 @@ package com.fitworkup.app.ui.screens.home
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.DirectionsRun
+import androidx.compose.material.icons.automirrored.filled.DirectionsRun
+import androidx.compose.material.icons.automirrored.outlined.DirectionsRun
 import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Storefront
-import androidx.compose.material.icons.outlined.DirectionsRun
 import androidx.compose.material.icons.outlined.EmojiEvents
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Storefront
@@ -28,7 +28,9 @@ sealed class HomeTab(
     val selectedIcon: ImageVector,
     val unselectedIcon: ImageVector
 ) {
-    object Workout : HomeTab("workout", "Treino", Icons.Filled.DirectionsRun, Icons.Outlined.DirectionsRun)
+    object Workout : HomeTab("workout", "Treino",
+        Icons.AutoMirrored.Filled.DirectionsRun, Icons.AutoMirrored.Outlined.DirectionsRun
+    )
     object Ranking : HomeTab("ranking", "Ranking", Icons.Filled.EmojiEvents, Icons.Outlined.EmojiEvents)
     object Profile : HomeTab("profile", "Perfil", Icons.Filled.Person, Icons.Outlined.Person)
     object Store : HomeTab("store", "Loja", Icons.Filled.Storefront, Icons.Outlined.Storefront)

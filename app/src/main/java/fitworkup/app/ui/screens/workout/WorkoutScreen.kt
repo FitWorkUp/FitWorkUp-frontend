@@ -1,235 +1,140 @@
 package com.fitworkup.app.ui.screens.workout
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import android.Manifest
+import android.content.Context
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.net.Uri
+import android.os.Build
+import android.provider.Settings
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.layout.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.fitworkup.app.ui.viewmodel.WorkoutViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.fitworkup.app.ui.screens.workout.components.WorkoutMetricsSection
 
 @Composable
 fun WorkoutScreen(
     viewModel: WorkoutViewModel = hiltViewModel(),
-    onFinishWorkout: () -> Unit = {}
+    onWorkoutFinished: () -> Unit
 ) {
-    val uiState by viewModel.uiState.collectAsState()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
-    // 🚀 Auto-start: Inicia o rastreamento assim que entra na tela
-    LaunchedEffect(Unit) {
-        if (!uiState.isTracking) {
-            viewModel.startWorkout(context)
+    // Permissões necessárias para rastreamento de passos e localização (GPS)
+    val requiredPermissions = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+        arrayOf(
+            Manifest.permission.ACCESS_FINE_LOCATION,
+            Manifest.permission.ACCESS_COARSE_LOCATION,
+            Manifest.permission.ACTIVITY_RECOGNITION
+        )
+    } else {
+        arrayOf(
+            Manifest.permission.ACCESS_FINE_LOCATION,
+            Manifest.permission.ACCESS_COARSE_LOCATION
+        )
+    }
+
+    var showPermissionDialog by remember { mutableStateOf(false) }
+
+    fun hasAllPermissions(ctx: Context): Boolean {
+        return requiredPermissions.all { perm ->
+            ContextCompat.checkSelfPermission(ctx, perm) == PackageManager.PERMISSION_GRANTED
         }
     }
 
-    Surface(
-        modifier = Modifier.fillMaxSize(),
-        color = MaterialTheme.colorScheme.background
-    ) {
+    val permissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissionsMap ->
+        val allGranted = permissionsMap.values.all { it }
+        if (!allGranted) {
+            showPermissionDialog = true
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        if (!hasAllPermissions(context)) {
+            permissionLauncher.launch(requiredPermissions)
+        }
+    }
+
+    LaunchedEffect(uiState.submissionSuccess, uiState.errorMessage) {
+        if (uiState.submissionSuccess == true) {
+            Toast.makeText(context, "Treino registrado com sucesso!", Toast.LENGTH_SHORT).show()
+            onWorkoutFinished()
+        } else if (uiState.errorMessage != null) {
+            Toast.makeText(context, uiState.errorMessage, Toast.LENGTH_LONG).show()
+        }
+    }
+
+    if (showPermissionDialog) {
+        AlertDialog(
+            onDismissRequest = { },
+            title = { Text("Permissões Necessárias") },
+            text = {
+                Text(
+                    "O FitWorkUp precisa de acesso ao seu GPS (Localização) e aos Sensores de Atividade Física para contagem de passos e validação anti-fraude em tempo real."
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showPermissionDialog = false
+                        val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                            data = Uri.fromParts("package", context.packageName, null)
+                        }
+                        context.startActivity(intent)
+                    }
+                ) {
+                    Text("Configurações")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        showPermissionDialog = false
+                        onWorkoutFinished()
+                    }
+                ) {
+                    Text("Cancelar")
+                }
+            }
+        )
+    }
+
+    Box(modifier = Modifier.fillMaxSize()) {
         Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(20.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.fillMaxSize(),
             verticalArrangement = Arrangement.SpaceBetween
         ) {
-            // 1. Painel do Cronômetro e Métricas Principais
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(24.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant
-                ),
-                elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(24.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Text(
-                        text = uiState.timeFormatted,
-                        style = MaterialTheme.typography.displayMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+            WorkoutMetricsSection(uiState = uiState)
 
-                    Spacer(modifier = Modifier.height(20.dp))
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        MetricItem(label = "Distância", value = uiState.distanceKmFormatted)
-                        MetricItem(label = "Pace", value = uiState.paceFormatted)
-                        MetricItem(label = "Passos", value = "${uiState.steps}")
-                    }
-                }
-            }
-
-            // 2. Área Central (Mapa / Status do GPS)
-            Card(
+            Button(
+                onClick = { viewModel.finishWorkout("CAMINHADA") },
+                enabled = !uiState.isSubmitting,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .weight(1f)
-                    .padding(vertical = 16.dp),
-                shape = RoundedCornerShape(24.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
-                )
+                    .padding(16.dp)
             ) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = if (uiState.isPaused) "Treino Pausado" else "📍 Rastreando percurso via GPS...",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                if (uiState.isSubmitting) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(24.dp),
+                        color = MaterialTheme.colorScheme.onPrimary
                     )
-                }
-            }
-
-            // 3. Cartões de Recompensa (FitCoins e XP)
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 16.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                RewardCard(
-                    modifier = Modifier.weight(1f),
-                    label = "FitCoins",
-                    value = "+${uiState.fitCoinsEarned}"
-                )
-                RewardCard(
-                    modifier = Modifier.weight(1f),
-                    label = "XP Ganho",
-                    value = "+${uiState.xpEarned}"
-                )
-            }
-
-            // 4. Botões de Ação (Pausar / Retomar e Finalizar)
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                if (uiState.isPaused) {
-                    Button(
-                        onClick = { viewModel.resumeWorkout() },
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(56.dp),
-                        shape = RoundedCornerShape(16.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.primary
-                        )
-                    ) {
-                        Text("CONTINUAR", fontWeight = FontWeight.Bold)
-                    }
                 } else {
-                    Button(
-                        onClick = { viewModel.pauseWorkout() },
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(56.dp),
-                        shape = RoundedCornerShape(16.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.secondary
-                        )
-                    ) {
-                        Text("PAUSAR", fontWeight = FontWeight.Bold)
-                    }
-                }
-
-                Button(
-                    onClick = {
-                        viewModel.stopWorkout(context)
-                        onFinishWorkout()
-                    },
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(56.dp),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.error
-                    )
-                ) {
-                    Text("FINALIZAR", fontWeight = FontWeight.Bold)
+                    Text("Finalizar Treino")
                 }
             }
-        }
-    }
-}
-
-@Composable
-private fun MetricItem(label: String, value: String) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
-        )
-        Spacer(modifier = Modifier.height(4.dp))
-        Text(
-            text = value,
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-    }
-}
-
-@Composable
-private fun RewardCard(modifier: Modifier = Modifier, label: String, value: String) {
-    Card(
-        modifier = modifier,
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant
-        )
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(14.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Text(
-                text = label,
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
-            )
-            Spacer(modifier = Modifier.height(2.dp))
-            Text(
-                text = value,
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.ExtraBold,
-                color = MaterialTheme.colorScheme.primary
-            )
         }
     }
 }

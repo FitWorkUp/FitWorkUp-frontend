@@ -4,10 +4,10 @@ import androidx.compose.runtime.Composable
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import com.fitworkup.app.ui.screens.splash.SplashScreen
-import com.fitworkup.app.ui.screens.login.OnboardingScreen
 import com.fitworkup.app.ui.screens.home.HomeScreen
+import com.fitworkup.app.ui.screens.login.OnboardingScreen
 import com.fitworkup.app.ui.screens.profile.ConfigScreen
+import com.fitworkup.app.ui.screens.splash.SplashScreen
 import com.fitworkup.app.ui.screens.workout.WorkoutScreen
 import fitworkup.app.ui.screens.login.LoginScreen
 
@@ -63,9 +63,12 @@ fun NavGraph() {
             ConfigScreen(onBackClick = { navController.popBackStack() })
         }
 
+        // Rota do Treino com Anti-Fraude Integrado
         composable(Routes.WORKOUT) {
             WorkoutScreen(
-                onFinishWorkout = { navController.popBackStack() }
+                onWorkoutFinished = {
+                    navController.popBackStack()
+                }
             )
         }
     }
