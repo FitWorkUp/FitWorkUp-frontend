@@ -65,7 +65,7 @@ fun NavGraph() {
 
         composable(Routes.WORKOUT) {
             WorkoutScreen(
-                onFinishWorkout = { navController.popBackStack() }
+                onWorkoutFinished = { navController.popBackStack() }
             )
         }
     }

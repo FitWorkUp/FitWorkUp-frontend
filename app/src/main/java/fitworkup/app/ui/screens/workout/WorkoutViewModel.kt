@@ -1,7 +1,10 @@
 package com.fitworkup.app.ui.viewmodel
 
+import android.Manifest
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.Build
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -29,7 +32,10 @@ data class WorkoutUiState(
     val currentLocation: LatLng? = null,
     val pathPoints: List<LatLng> = emptyList(),
     val isTracking: Boolean = false,
-    val isPaused: Boolean = false
+    val isPaused: Boolean = false,
+    val isSubmitting: Boolean = false,
+    val permissionNeeded: Boolean = false,
+    val errorMessage: String? = null
 )
 
 @HiltViewModel
@@ -49,16 +55,57 @@ class WorkoutViewModel @Inject constructor(
         startObserveSensorState()
     }
 
+    private fun hasRequiredPermissions(context: Context): Boolean {
+        val fineLocation = ContextCompat.checkSelfPermission(
+            context, Manifest.permission.ACCESS_FINE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED
+
+        val activityRec = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            ContextCompat.checkSelfPermission(
+                context, Manifest.permission.ACTIVITY_RECOGNITION
+            ) == PackageManager.PERMISSION_GRANTED
+        } else true
+
+        return fineLocation && activityRec
+    }
+
     fun startWorkout(context: Context? = null, workoutType: String? = null) {
         val ctx = context ?: appContext
-        val intent = Intent(ctx, WorkoutSensorService::class.java).apply {
-            action = WorkoutSensorService.ACTION_START
-        }
-        ContextCompat.startForegroundService(ctx, intent)
 
-        secondsElapsed = 0
-        _uiState.value = WorkoutUiState(isTracking = true, isPaused = false)
-        startTimer()
+        if (!hasRequiredPermissions(ctx)) {
+            _uiState.value = _uiState.value.copy(
+                permissionNeeded = true,
+                errorMessage = "Permissões de Localização e Atividade Física são necessárias para iniciar."
+            )
+            return
+        }
+
+        try {
+            val intent = Intent(ctx, WorkoutSensorService::class.java).apply {
+                action = WorkoutSensorService.ACTION_START
+            }
+            ContextCompat.startForegroundService(ctx, intent)
+
+            secondsElapsed = 0
+            _uiState.value = _uiState.value.copy(
+                isTracking = true,
+                isPaused = false,
+                permissionNeeded = false,
+                errorMessage = null
+            )
+            startTimer()
+        } catch (e: SecurityException) {
+            _uiState.value = _uiState.value.copy(
+                isTracking = false,
+                permissionNeeded = true,
+                errorMessage = "Erro de segurança: Conceda as permissões necessárias no sistema."
+            )
+        } catch (e: Exception) {
+            _uiState.value = _uiState.value.copy(
+                isTracking = false,
+                errorMessage = "Erro ao iniciar monitoramento: ${e.localizedMessage}"
+            )
+        }
     }
 
     fun pauseWorkout() {
@@ -73,13 +120,41 @@ class WorkoutViewModel @Inject constructor(
 
     fun stopWorkout(context: Context? = null) {
         val ctx = context ?: appContext
-        val intent = Intent(ctx, WorkoutSensorService::class.java).apply {
-            action = WorkoutSensorService.ACTION_STOP
+        try {
+            val intent = Intent(ctx, WorkoutSensorService::class.java).apply {
+                action = WorkoutSensorService.ACTION_STOP
+            }
+            ctx.stopService(intent)
+        } catch (e: Exception) {
+            // Log do erro ao encerrar serviço
         }
-        ctx.stopService(intent)
 
         timerJob?.cancel()
         _uiState.value = _uiState.value.copy(isTracking = false, isPaused = false)
+    }
+
+    fun finishWorkout(context: Context? = null, workoutType: String = "CAMINHADA") {
+        val ctx = context ?: appContext
+        _uiState.value = _uiState.value.copy(isSubmitting = true)
+
+        viewModelScope.launch {
+            try {
+                stopWorkout(ctx)
+                _uiState.value = _uiState.value.copy(
+                    isSubmitting = false,
+                    isTracking = false
+                )
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(
+                    isSubmitting = false,
+                    errorMessage = "Erro ao finalizar o treino: ${e.localizedMessage}"
+                )
+            }
+        }
+    }
+
+    fun clearErrorMessage() {
+        _uiState.value = _uiState.value.copy(errorMessage = null, permissionNeeded = false)
     }
 
     private fun startTimer() {
@@ -107,17 +182,14 @@ class WorkoutViewModel @Inject constructor(
     }
 
     private fun updateUiMetrics(sensorState: WorkoutState) {
-        // Formata Tempo
         val hours = secondsElapsed / 3600
         val minutes = (secondsElapsed % 3600) / 60
         val seconds = secondsElapsed % 60
         val timeStr = String.format("%02d:%02d:%02d", hours, minutes, seconds)
 
-        // Formata Distância
         val distanceKm = sensorState.distanceMeters / 1000f
         val distanceStr = String.format("%.2f km", distanceKm)
 
-        // Cálculo de Pace
         val paceStr = if (distanceKm >= 0.02f && secondsElapsed > 0) {
             val paceSecondsTotal = (secondsElapsed / distanceKm).toInt()
             val paceMin = paceSecondsTotal / 60
@@ -132,12 +204,10 @@ class WorkoutViewModel @Inject constructor(
             "--'--\" /km"
         }
 
-        // Gamificação
         val fitCoins = (distanceKm * 6).toInt()
         val xp = (distanceKm * 100 + sensorState.steps * 0.1f).toInt()
         val xpProgress = ((xp % 500) / 500f).coerceIn(0f, 1f)
 
-        // Localização e Caminho
         val newLatLng = extractLatLngFromState(sensorState)
 
         val updatedPath = if (newLatLng != null && (_uiState.value.pathPoints.isEmpty() || _uiState.value.pathPoints.last() != newLatLng)) {

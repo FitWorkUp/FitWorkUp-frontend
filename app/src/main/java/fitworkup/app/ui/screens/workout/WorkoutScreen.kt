@@ -1,235 +1,165 @@
 package com.fitworkup.app.ui.screens.workout
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import android.Manifest
+import android.content.Context
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.net.Uri
+import android.os.Build
+import android.provider.Settings
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.layout.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.fitworkup.app.ui.screens.workout.components.WorkoutMetricsSection
 import com.fitworkup.app.ui.viewmodel.WorkoutViewModel
 
 @Composable
 fun WorkoutScreen(
     viewModel: WorkoutViewModel = hiltViewModel(),
-    onFinishWorkout: () -> Unit = {}
+    onWorkoutFinished: () -> Unit
 ) {
-    val uiState by viewModel.uiState.collectAsState()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
-    // 🚀 Auto-start: Inicia o rastreamento assim que entra na tela
-    LaunchedEffect(Unit) {
-        if (!uiState.isTracking) {
+    val requiredPermissions = remember {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            arrayOf(
+                Manifest.permission.ACCESS_FINE_LOCATION,
+                Manifest.permission.ACCESS_COARSE_LOCATION,
+                Manifest.permission.ACTIVITY_RECOGNITION
+            )
+        } else {
+            arrayOf(
+                Manifest.permission.ACCESS_FINE_LOCATION,
+                Manifest.permission.ACCESS_COARSE_LOCATION
+            )
+        }
+    }
+
+    fun hasAllPermissions(ctx: Context): Boolean {
+        return requiredPermissions.all { perm ->
+            ContextCompat.checkSelfPermission(ctx, perm) == PackageManager.PERMISSION_GRANTED
+        }
+    }
+
+    var hasPermissions by remember { mutableStateOf(hasAllPermissions(context)) }
+    var showPermissionDialog by remember { mutableStateOf(false) }
+
+    val permissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissionsMap ->
+        val granted = permissionsMap.values.all { it }
+        hasPermissions = granted
+        if (!granted) {
+            showPermissionDialog = true
+        }
+    }
+
+    // 🚀 DISPARO DO TREINO: Inicia a contagem quando tiver permissão e ainda não estiver rastreando
+    LaunchedEffect(hasPermissions) {
+        if (hasPermissions && !uiState.isTracking) {
             viewModel.startWorkout(context)
         }
     }
 
-    Surface(
-        modifier = Modifier.fillMaxSize(),
-        color = MaterialTheme.colorScheme.background
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(20.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.SpaceBetween
-        ) {
-            // 1. Painel do Cronômetro e Métricas Principais
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(24.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant
-                ),
-                elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(24.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Text(
-                        text = uiState.timeFormatted,
-                        style = MaterialTheme.typography.displayMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-
-                    Spacer(modifier = Modifier.height(20.dp))
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        MetricItem(label = "Distância", value = uiState.distanceKmFormatted)
-                        MetricItem(label = "Pace", value = uiState.paceFormatted)
-                        MetricItem(label = "Passos", value = "${uiState.steps}")
-                    }
-                }
-            }
-
-            // 2. Área Central (Mapa / Status do GPS)
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f)
-                    .padding(vertical = 16.dp),
-                shape = RoundedCornerShape(24.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
-                )
-            ) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = if (uiState.isPaused) "Treino Pausado" else "📍 Rastreando percurso via GPS...",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-
-            // 3. Cartões de Recompensa (FitCoins e XP)
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 16.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                RewardCard(
-                    modifier = Modifier.weight(1f),
-                    label = "FitCoins",
-                    value = "+${uiState.fitCoinsEarned}"
-                )
-                RewardCard(
-                    modifier = Modifier.weight(1f),
-                    label = "XP Ganho",
-                    value = "+${uiState.xpEarned}"
-                )
-            }
-
-            // 4. Botões de Ação (Pausar / Retomar e Finalizar)
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                if (uiState.isPaused) {
-                    Button(
-                        onClick = { viewModel.resumeWorkout() },
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(56.dp),
-                        shape = RoundedCornerShape(16.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.primary
-                        )
-                    ) {
-                        Text("CONTINUAR", fontWeight = FontWeight.Bold)
-                    }
-                } else {
-                    Button(
-                        onClick = { viewModel.pauseWorkout() },
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(56.dp),
-                        shape = RoundedCornerShape(16.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.secondary
-                        )
-                    ) {
-                        Text("PAUSAR", fontWeight = FontWeight.Bold)
-                    }
-                }
-
-                Button(
-                    onClick = {
-                        viewModel.stopWorkout(context)
-                        onFinishWorkout()
-                    },
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(56.dp),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.error
-                    )
-                ) {
-                    Text("FINALIZAR", fontWeight = FontWeight.Bold)
-                }
-            }
+    // Monitora permissões e erros vindos do ViewModel
+    LaunchedEffect(uiState.permissionNeeded, uiState.errorMessage) {
+        if (uiState.permissionNeeded) {
+            showPermissionDialog = true
+        } else if (uiState.errorMessage != null) {
+            Toast.makeText(context, uiState.errorMessage, Toast.LENGTH_LONG).show()
+            viewModel.clearErrorMessage()
         }
     }
-}
 
-@Composable
-private fun MetricItem(label: String, value: String) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
-        )
-        Spacer(modifier = Modifier.height(4.dp))
-        Text(
-            text = value,
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+    if (showPermissionDialog || !hasPermissions) {
+        AlertDialog(
+            onDismissRequest = { },
+            title = { Text("Permissões de Treino Necessárias") },
+            text = {
+                Text(
+                    "Para registrar o treino e validar seus passos, o FitWorkUp precisa das permissões de Localização (GPS) e Reconhecimento de Atividade Física.\n\nPor favor, conceda as permissões para continuar."
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        if (!hasPermissions) {
+                            permissionLauncher.launch(requiredPermissions)
+                            val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                                data = Uri.fromParts("package", context.packageName, null)
+                            }
+                            context.startActivity(intent)
+                        } else {
+                            showPermissionDialog = false
+                        }
+                    }
+                ) {
+                    Text("Conceder / Configurações")
+                }
+            },
+            dismissButton = {
+                OutlinedButton(
+                    onClick = {
+                        showPermissionDialog = false
+                        onWorkoutFinished()
+                    }
+                ) {
+                    Text("Cancelar e Sair")
+                }
+            }
         )
     }
-}
 
-@Composable
-private fun RewardCard(modifier: Modifier = Modifier, label: String, value: String) {
-    Card(
-        modifier = modifier,
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant
-        )
+    // 📱 statusBarsPadding() impede a sobreposição com a câmera notch / barra de status
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .statusBarsPadding()
+            .navigationBarsPadding()
     ) {
         Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(14.dp),
+            modifier = Modifier.fillMaxSize(),
+            verticalArrangement = Arrangement.SpaceBetween,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text(
-                text = label,
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
-            )
-            Spacer(modifier = Modifier.height(2.dp))
-            Text(
-                text = value,
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.ExtraBold,
-                color = MaterialTheme.colorScheme.primary
-            )
+            // Seção de Cronômetro e Métricas com suporte a Tema Escuro
+            WorkoutMetricsSection(uiState = uiState)
+
+            Button(
+                onClick = {
+                    if (hasPermissions) {
+                        viewModel.finishWorkout(context)
+                        onWorkoutFinished()
+                    } else {
+                        showPermissionDialog = true
+                    }
+                },
+                enabled = !uiState.isSubmitting,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp)
+            ) {
+                if (uiState.isSubmitting) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(24.dp),
+                        color = MaterialTheme.colorScheme.onPrimary
+                    )
+                } else {
+                    Text("Finalizar Treino")
+                }
+            }
         }
     }
 }
