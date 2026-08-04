@@ -13,18 +13,19 @@ import com.fitworkup.app.service.WorkoutState
 import com.google.android.gms.maps.model.LatLng
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import java.util.Locale
+import javax.inject.Inject
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
 data class WorkoutUiState(
     val timeFormatted: String = "00:00:00",
     val distanceKmFormatted: String = "0,00 km",
     val paceFormatted: String = "--'--\" /km",
+    val speedFormatted: String = "0,0 km/h",
     val steps: Int = 0,
     val fitCoinsEarned: Int = 0,
     val xpEarned: Int = 0,
@@ -35,6 +36,8 @@ data class WorkoutUiState(
     val isPaused: Boolean = false,
     val isSubmitting: Boolean = false,
     val permissionNeeded: Boolean = false,
+    val gpsReady: Boolean = false,
+    val stepSensorAvailable: Boolean = true,
     val errorMessage: String? = null
 )
 
@@ -47,198 +50,243 @@ class WorkoutViewModel @Inject constructor(
     val uiState: StateFlow<WorkoutUiState> = _uiState.asStateFlow()
 
     private var workoutService: WorkoutSensorService? = null
-    private var timerJob: Job? = null
-    private var secondsElapsed: Long = 0
+    private var sensorStateJob: Job? = null
+    private var lastPathDistanceMeters = 0f
 
     fun onServiceConnected(service: WorkoutSensorService) {
         workoutService = service
-        startObserveSensorState()
+        sensorStateJob?.cancel()
+        sensorStateJob = viewModelScope.launch {
+            service.workoutState.collect(::updateUiMetrics)
+        }
     }
 
-    private fun hasRequiredPermissions(context: Context): Boolean {
-        val fineLocation = ContextCompat.checkSelfPermission(
-            context, Manifest.permission.ACCESS_FINE_LOCATION
-        ) == PackageManager.PERMISSION_GRANTED
-
-        val activityRec = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            ContextCompat.checkSelfPermission(
-                context, Manifest.permission.ACTIVITY_RECOGNITION
-            ) == PackageManager.PERMISSION_GRANTED
-        } else true
-
-        return fineLocation && activityRec
+    fun onServiceDisconnected() {
+        sensorStateJob?.cancel()
+        sensorStateJob = null
+        workoutService = null
     }
 
-    fun startWorkout(context: Context? = null, workoutType: String? = null) {
+    fun startWorkout(
+        context: Context? = null,
+        workoutType: String? = "CAMINHADA"
+    ) {
         val ctx = context ?: appContext
-
         if (!hasRequiredPermissions(ctx)) {
             _uiState.value = _uiState.value.copy(
                 permissionNeeded = true,
-                errorMessage = "Permissões de Localização e Atividade Física são necessárias para iniciar."
+                errorMessage =
+                    "Permissões de localização e atividade física são necessárias."
             )
             return
         }
 
-        try {
-            val intent = Intent(ctx, WorkoutSensorService::class.java).apply {
+        lastPathDistanceMeters = 0f
+        _uiState.value = WorkoutUiState(isTracking = true)
+
+        runCatching {
+            val intent = Intent(
+                ctx,
+                WorkoutSensorService::class.java
+            ).apply {
                 action = WorkoutSensorService.ACTION_START
+                putExtra(
+                    WorkoutSensorService.EXTRA_WORKOUT_TYPE,
+                    workoutType ?: "CAMINHADA"
+                )
             }
             ContextCompat.startForegroundService(ctx, intent)
-
-            secondsElapsed = 0
-            _uiState.value = _uiState.value.copy(
-                isTracking = true,
-                isPaused = false,
-                permissionNeeded = false,
-                errorMessage = null
-            )
-            startTimer()
-        } catch (e: SecurityException) {
-            _uiState.value = _uiState.value.copy(
-                isTracking = false,
-                permissionNeeded = true,
-                errorMessage = "Erro de segurança: Conceda as permissões necessárias no sistema."
-            )
-        } catch (e: Exception) {
-            _uiState.value = _uiState.value.copy(
-                isTracking = false,
-                errorMessage = "Erro ao iniciar monitoramento: ${e.localizedMessage}"
-            )
-        }
+        }.onFailure(::showStartError)
     }
 
     fun pauseWorkout() {
-        timerJob?.cancel()
-        _uiState.value = _uiState.value.copy(isPaused = true)
+        sendServiceAction(WorkoutSensorService.ACTION_PAUSE)
     }
 
     fun resumeWorkout() {
-        _uiState.value = _uiState.value.copy(isPaused = false)
-        startTimer()
+        sendServiceAction(WorkoutSensorService.ACTION_RESUME)
     }
 
     fun stopWorkout(context: Context? = null) {
-        val ctx = context ?: appContext
-        try {
-            val intent = Intent(ctx, WorkoutSensorService::class.java).apply {
-                action = WorkoutSensorService.ACTION_STOP
-            }
-            ctx.stopService(intent)
-        } catch (e: Exception) {
-            // Log do erro ao encerrar serviço
-        }
-
-        timerJob?.cancel()
-        _uiState.value = _uiState.value.copy(isTracking = false, isPaused = false)
+        sendServiceAction(
+            WorkoutSensorService.ACTION_STOP,
+            context ?: appContext
+        )
     }
 
-    fun finishWorkout(context: Context? = null, workoutType: String = "CAMINHADA") {
-        val ctx = context ?: appContext
+    fun finishWorkout(
+        context: Context? = null,
+        workoutType: String = "CAMINHADA"
+    ) {
         _uiState.value = _uiState.value.copy(isSubmitting = true)
-
-        viewModelScope.launch {
-            try {
-                stopWorkout(ctx)
-                _uiState.value = _uiState.value.copy(
-                    isSubmitting = false,
-                    isTracking = false
-                )
-            } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(
-                    isSubmitting = false,
-                    errorMessage = "Erro ao finalizar o treino: ${e.localizedMessage}"
-                )
-            }
-        }
+        stopWorkout(context)
+        _uiState.value = _uiState.value.copy(
+            isSubmitting = false,
+            isTracking = false,
+            isPaused = false
+        )
     }
 
     fun clearErrorMessage() {
-        _uiState.value = _uiState.value.copy(errorMessage = null, permissionNeeded = false)
+        _uiState.value = _uiState.value.copy(
+            errorMessage = null,
+            permissionNeeded = false
+        )
     }
 
-    private fun startTimer() {
-        timerJob?.cancel()
-        timerJob = viewModelScope.launch {
-            while (true) {
-                delay(1000L)
-                if (!_uiState.value.isPaused) {
-                    secondsElapsed++
-                    val currentSensorState = workoutService?.workoutState?.value ?: WorkoutState()
-                    updateUiMetrics(currentSensorState)
+    private fun sendServiceAction(
+        action: String,
+        context: Context = appContext
+    ) {
+        runCatching {
+            context.startService(
+                Intent(
+                    context,
+                    WorkoutSensorService::class.java
+                ).apply {
+                    this.action = action
                 }
-            }
-        }
-    }
-
-    private fun startObserveSensorState() {
-        viewModelScope.launch {
-            workoutService?.workoutState?.collect { sensorState ->
-                if (!_uiState.value.isPaused) {
-                    updateUiMetrics(sensorState)
-                }
-            }
+            )
+        }.onFailure { error ->
+            _uiState.value = _uiState.value.copy(
+                errorMessage = error.localizedMessage
+                    ?: "Não foi possível controlar o treino."
+            )
         }
     }
 
     private fun updateUiMetrics(sensorState: WorkoutState) {
-        val hours = secondsElapsed / 3600
-        val minutes = (secondsElapsed % 3600) / 60
-        val seconds = secondsElapsed % 60
-        val timeStr = String.format("%02d:%02d:%02d", hours, minutes, seconds)
+        val elapsedSeconds = sensorState.elapsedMillis / 1_000L
+        val hours = elapsedSeconds / 3_600L
+        val minutes = (elapsedSeconds % 3_600L) / 60L
+        val seconds = elapsedSeconds % 60L
 
-        val distanceKm = sensorState.distanceMeters / 1000f
-        val distanceStr = String.format("%.2f km", distanceKm)
+        val distanceKm = sensorState.distanceMeters / 1_000f
+        val newLocation = extractLatLng(sensorState)
+        val oldState = _uiState.value
 
-        val paceStr = if (distanceKm >= 0.02f && secondsElapsed > 0) {
-            val paceSecondsTotal = (secondsElapsed / distanceKm).toInt()
-            val paceMin = paceSecondsTotal / 60
-            val paceSec = paceSecondsTotal % 60
+        val shouldAppendPath =
+            newLocation != null &&
+                    sensorState.gpsReady &&
+                    sensorState.distanceMeters > lastPathDistanceMeters &&
+                    oldState.pathPoints.lastOrNull() != newLocation
 
-            if (paceMin in 1..19) {
-                String.format("%d'%02d\" /km", paceMin, paceSec)
-            } else {
-                "--'--\" /km"
-            }
+        val updatedPath = if (shouldAppendPath) {
+            lastPathDistanceMeters = sensorState.distanceMeters
+            oldState.pathPoints + newLocation
+        } else {
+            oldState.pathPoints
+        }
+
+        val pace = if (
+            distanceKm >= MIN_DISTANCE_FOR_PACE_KM &&
+            elapsedSeconds > 0L
+        ) {
+            formatPace(elapsedSeconds, distanceKm)
         } else {
             "--'--\" /km"
         }
 
-        val fitCoins = (distanceKm * 6).toInt()
-        val xp = (distanceKm * 100 + sensorState.steps * 0.1f).toInt()
-        val xpProgress = ((xp % 500) / 500f).coerceIn(0f, 1f)
+        val fitCoins = (distanceKm * FITCOINS_PER_KM).toInt()
+        val xp = (
+                distanceKm * XP_PER_KM +
+                        sensorState.steps * XP_PER_STEP
+                ).toInt()
 
-        val newLatLng = extractLatLngFromState(sensorState)
-
-        val updatedPath = if (newLatLng != null && (_uiState.value.pathPoints.isEmpty() || _uiState.value.pathPoints.last() != newLatLng)) {
-            _uiState.value.pathPoints + newLatLng
-        } else {
-            _uiState.value.pathPoints
-        }
-
-        _uiState.value = _uiState.value.copy(
-            timeFormatted = timeStr,
-            distanceKmFormatted = distanceStr,
-            paceFormatted = paceStr,
+        _uiState.value = oldState.copy(
+            timeFormatted = String.format(
+                Locale.getDefault(),
+                "%02d:%02d:%02d",
+                hours,
+                minutes,
+                seconds
+            ),
+            distanceKmFormatted = String.format(
+                Locale.getDefault(),
+                "%.2f km",
+                distanceKm
+            ),
+            paceFormatted = pace,
+            speedFormatted = String.format(
+                Locale.getDefault(),
+                "%.1f km/h",
+                sensorState.speedMps * 3.6f
+            ),
             steps = sensorState.steps,
             fitCoinsEarned = fitCoins,
             xpEarned = xp,
-            xpProgress = xpProgress,
-            currentLocation = newLatLng ?: _uiState.value.currentLocation,
-            pathPoints = updatedPath
+            xpProgress = ((xp % 500) / 500f).coerceIn(0f, 1f),
+            currentLocation = newLocation ?: oldState.currentLocation,
+            pathPoints = updatedPath,
+            isTracking = sensorState.isTracking,
+            isPaused = sensorState.isPaused,
+            gpsReady = sensorState.gpsReady,
+            stepSensorAvailable = sensorState.stepSensorAvailable,
+            errorMessage = sensorState.errorMessage
+                ?: oldState.errorMessage
         )
     }
 
-    private fun extractLatLngFromState(sensorState: WorkoutState): LatLng? {
-        return if (sensorState.latitude != 0.0 && sensorState.longitude != 0.0) {
-            LatLng(sensorState.latitude, sensorState.longitude)
+    private fun formatPace(
+        elapsedSeconds: Long,
+        distanceKm: Float
+    ): String {
+        val total = (elapsedSeconds / distanceKm).toInt()
+        val minutes = total / 60
+        val seconds = total % 60
+
+        return if (minutes in 1..30) {
+            String.format(
+                Locale.getDefault(),
+                "%d'%02d\" /km",
+                minutes,
+                seconds
+            )
         } else {
-            null
+            "--'--\" /km"
         }
     }
 
+    private fun extractLatLng(state: WorkoutState): LatLng? {
+        val latitude = state.latitude ?: return null
+        val longitude = state.longitude ?: return null
+        return LatLng(latitude, longitude)
+    }
+
+    private fun hasRequiredPermissions(context: Context): Boolean {
+        val locationGranted = ContextCompat.checkSelfPermission(
+            context,
+            Manifest.permission.ACCESS_FINE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED
+
+        val activityGranted =
+            Build.VERSION.SDK_INT < Build.VERSION_CODES.Q ||
+                    ContextCompat.checkSelfPermission(
+                        context,
+                        Manifest.permission.ACTIVITY_RECOGNITION
+                    ) == PackageManager.PERMISSION_GRANTED
+
+        return locationGranted && activityGranted
+    }
+
+    private fun showStartError(error: Throwable) {
+        _uiState.value = _uiState.value.copy(
+            isTracking = false,
+            errorMessage =
+                "Erro ao iniciar monitoramento: ${error.localizedMessage}"
+        )
+    }
+
     override fun onCleared() {
+        sensorStateJob?.cancel()
+        workoutService = null
         super.onCleared()
-        timerJob?.cancel()
+    }
+
+    companion object {
+        private const val FITCOINS_PER_KM = 10f
+        private const val XP_PER_KM = 100f
+        private const val XP_PER_STEP = 0.1f
+        private const val MIN_DISTANCE_FOR_PACE_KM = 0.05f
     }
 }
