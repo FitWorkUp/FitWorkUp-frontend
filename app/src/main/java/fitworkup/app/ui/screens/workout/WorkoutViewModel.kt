@@ -63,13 +63,18 @@ class WorkoutViewModel @Inject constructor(
                 distanceKm = distanceKm,
                 avgSpeedKmH = speedKmH,
                 riskScore = currentState.riskScore + eval.riskDelta,
-                fraudReasons = updatedReasons
+                fraudReasons = updatedReasons,
+                currentLocation = sensorState.currentLocation,
+                pathPoints = sensorState.pathPoints
             )
         } else {
             _uiState.value = _uiState.value.copy(
                 isTracking = sensorState.isTracking,
+                totalSteps = newStepCount,
                 distanceKm = distanceKm,
-                avgSpeedKmH = speedKmH
+                avgSpeedKmH = speedKmH,
+                currentLocation = sensorState.currentLocation,
+                pathPoints = sensorState.pathPoints
             )
         }
     }

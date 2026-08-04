@@ -9,7 +9,7 @@ import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import com.fitworkup.app.ui.screens.home.components.WorkoutTabContent
+import com.fitworkup.app.ui.screens.workout.components.WorkoutTabContent
 import com.fitworkup.app.ui.screens.ranking.RankingTabContent
 import com.fitworkup.app.ui.screens.store.StorePoints
 import com.fitworkup.app.ui.screens.profile.ProfileScreen

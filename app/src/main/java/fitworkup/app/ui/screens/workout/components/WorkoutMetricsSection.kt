@@ -3,8 +3,8 @@ package com.fitworkup.app.ui.screens.workout.components
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.DirectionsRun
 import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.DirectionsRun
 import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.Warning
@@ -83,7 +83,7 @@ fun WorkoutMetricsSection(
             MetricCard(
                 title = "Distância",
                 value = String.format("%.2f km", uiState.distanceKm),
-                icon = Icons.Default.DirectionsRun,
+                icon = Icons.AutoMirrored.Filled.DirectionsRun, // Corrigido de imageVector para icon
                 valueColor = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.weight(1f)
             )

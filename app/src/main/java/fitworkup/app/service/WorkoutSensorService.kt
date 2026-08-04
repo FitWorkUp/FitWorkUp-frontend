@@ -38,7 +38,9 @@ data class WorkoutState(
     val latitude: Double = 0.0,
     val longitude: Double = 0.0,
     val speedMps: Float = 0f,
-    val isTracking: Boolean = false
+    val isTracking: Boolean = false,
+    val currentLocation: Location? = null,
+    val pathPoints: List<Location> = emptyList()
 )
 
 class WorkoutSensorService : Service(), SensorEventListener {
@@ -56,6 +58,7 @@ class WorkoutSensorService : Service(), SensorEventListener {
     private lateinit var locationCallback: LocationCallback
     private var lastLocation: Location? = null
     private var totalDistanceMeters: Float = 0f
+    private val pathPointsList = mutableListOf<Location>()
 
     inner class LocalBinder : Binder() {
         fun getService(): WorkoutSensorService = this@WorkoutSensorService
@@ -97,7 +100,16 @@ class WorkoutSensorService : Service(), SensorEventListener {
     private fun startWorkout() {
         createNotificationChannel()
 
-        _workoutState.value = _workoutState.value.copy(isTracking = true)
+        pathPointsList.clear()
+        totalDistanceMeters = 0f
+        lastLocation = null
+
+        _workoutState.value = _workoutState.value.copy(
+            isTracking = true,
+            distanceMeters = 0f,
+            currentLocation = null,
+            pathPoints = emptyList()
+        )
 
         val notification = buildNotification()
         val serviceType = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
@@ -123,25 +135,20 @@ class WorkoutSensorService : Service(), SensorEventListener {
     }
 
     private fun stopWorkout() {
-        // 1. Marca o rastreamento como inativo para interromper novos alertas de notificação
         _workoutState.value = _workoutState.value.copy(isTracking = false)
 
-        // 2. Desvincula o sensor de passos
         stepCounterSensor?.let { sensor ->
             sensorManager.unregisterListener(this, sensor)
         }
 
-        // 3. Desvincula as atualizações do GPS
         if (::fusedLocationClient.isInitialized && ::locationCallback.isInitialized) {
             fusedLocationClient.removeLocationUpdates(locationCallback)
         }
 
-        // 4. Parada explícita de Foreground e remoção da notificação do NotificationManager
         ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
         val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         notificationManager.cancel(NOTIFICATION_ID)
 
-        // 5. Finaliza o ciclo de vida do serviço
         stopSelf()
     }
 
@@ -177,6 +184,7 @@ class WorkoutSensorService : Service(), SensorEventListener {
             LOCATION_INTERVAL_MS
         ).apply {
             setMinUpdateIntervalMillis(LOCATION_FASTEST_INTERVAL_MS)
+            setMinUpdateDistanceMeters(1.0f) // Atualiza com deslocamentos a partir de 1 metro
         }.build()
 
         fusedLocationClient.requestLocationUpdates(
@@ -198,20 +206,26 @@ class WorkoutSensorService : Service(), SensorEventListener {
 
         if (isMock) return
 
+        // Filtra leituras imprecisas do GPS (imprecisão > 20 metros)
+        if (newLocation.hasAccuracy() && newLocation.accuracy > 20f) return
+
         lastLocation?.let { previous ->
             val distance = previous.distanceTo(newLocation)
-            if (distance > 2.0f) {
+            if (distance >= 1.0f) {
                 totalDistanceMeters += distance
             }
         }
 
         lastLocation = newLocation
+        pathPointsList.add(newLocation)
 
         _workoutState.value = _workoutState.value.copy(
             latitude = newLocation.latitude,
             longitude = newLocation.longitude,
             distanceMeters = totalDistanceMeters,
-            speedMps = newLocation.speed
+            speedMps = newLocation.speed,
+            currentLocation = newLocation,
+            pathPoints = pathPointsList.toList()
         )
         updateNotification()
     }
@@ -253,7 +267,7 @@ class WorkoutSensorService : Service(), SensorEventListener {
         private const val CHANNEL_ID = "workout_sensor_channel"
         private const val NOTIFICATION_ID = 1001
 
-        private const val LOCATION_INTERVAL_MS = 5000L
-        private const val LOCATION_FASTEST_INTERVAL_MS = 2000L
+        private const val LOCATION_INTERVAL_MS = 2000L // Atualização a cada 2s para maior fidelidade no mapa
+        private const val LOCATION_FASTEST_INTERVAL_MS = 1000L
     }
 }

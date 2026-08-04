@@ -14,6 +14,8 @@ import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -24,7 +26,9 @@ import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.fitworkup.app.service.WorkoutSensorService
+import com.fitworkup.app.ui.screens.workout.components.WorkoutMapView
 import com.fitworkup.app.ui.screens.workout.components.WorkoutMetricsSection
+import com.google.android.gms.maps.model.LatLng
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -35,8 +39,17 @@ fun WorkoutScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val currentViewModel by rememberUpdatedState(viewModel)
+    val scrollState = rememberScrollState()
 
-    // Lista dinâmica de permissões por versão de Android (incluindo POST_NOTIFICATIONS para Android 13+)
+    // Conversão otimizada de android.location.Location para com.google.android.gms.maps.model.LatLng
+    val currentLocationLatLng = remember(uiState.currentLocation) {
+        uiState.currentLocation?.let { LatLng(it.latitude, it.longitude) }
+    }
+    val pathPointsLatLng = remember(uiState.pathPoints) {
+        uiState.pathPoints.map { LatLng(it.latitude, it.longitude) }
+    }
+
+    // Lista dinâmica de permissões por versão do Android
     val requiredPermissions = remember {
         val permissions = mutableListOf(
             Manifest.permission.ACCESS_FINE_LOCATION,
@@ -70,13 +83,11 @@ fun WorkoutScreen(
                 }
             }
 
-            override fun onServiceDisconnected(name: ComponentName?) {
-                // Tratamento de desconexão inesperada do serviço
-            }
+            override fun onServiceDisconnected(name: ComponentName?) {}
         }
     }
 
-    // Função central para iniciar e vincular ao Foreground Service com segurança
+    // Função para iniciar e vincular ao Foreground Service
     fun startAndBindService() {
         try {
             val startIntent = Intent(context, WorkoutSensorService::class.java).apply {
@@ -93,7 +104,7 @@ fun WorkoutScreen(
         }
     }
 
-    // Lançador do contrato de permissões
+    // Lançador de permissões
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestMultiplePermissions()
     ) { permissionsMap ->
@@ -114,7 +125,7 @@ fun WorkoutScreen(
         }
     }
 
-    // Gerenciamento seguro do ciclo de vida para desvinculação do serviço
+    // Gerenciamento de desvinculação do serviço
     DisposableEffect(context) {
         onDispose {
             if (isBound) {
@@ -128,7 +139,7 @@ fun WorkoutScreen(
         }
     }
 
-    // Monitoramento do estado de envio e erros
+    // Monitoramento do encerramento do treino
     LaunchedEffect(uiState.submissionSuccess, uiState.errorMessage) {
         if (uiState.submissionSuccess == true) {
             val stopIntent = Intent(context, WorkoutSensorService::class.java).apply {
@@ -142,14 +153,14 @@ fun WorkoutScreen(
         }
     }
 
-    // Diálogo informativo em caso de negação de permissões
+    // Diálogo de permissões
     if (showPermissionDialog) {
         AlertDialog(
             onDismissRequest = { },
             title = { Text("Permissões Necessárias") },
             text = {
                 Text(
-                    "O FitWorkUp precisa de acesso ao seu GPS (Localização), Notificações e aos Sensores de Atividade Física para contagem de passos e validação do treino."
+                    "O FitWorkUp precisa de acesso ao seu GPS (Localização), Notificações e aos Sensores de Atividade Física para registrar seu percurso e validar o treino."
                 )
             },
             confirmButton = {
@@ -198,15 +209,28 @@ fun WorkoutScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
+                .verticalScroll(scrollState)
                 .padding(16.dp),
-            verticalArrangement = Arrangement.SpaceBetween,
+            verticalArrangement = Arrangement.spacedBy(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            WorkoutMetricsSection(
-                uiState = uiState,
-                modifier = Modifier.weight(1f)
+            // 🗺️ 1. MAPA DO PERCURSO EM TEMPO REAL (Com adaptação LatLng)
+            WorkoutMapView(
+                currentLocation = currentLocationLatLng,
+                pathPoints = pathPointsLatLng,
+                hasPermissions = hasAllPermissions(context),
+                modifier = Modifier.fillMaxWidth()
             )
 
+            // 📊 2. MÉTRICAS TELEMÉTRICAS E ANTI-FRAUDE
+            WorkoutMetricsSection(
+                uiState = uiState,
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // 🏁 3. BOTÃO DE FINALIZAR TREINO
             Button(
                 onClick = { viewModel.finishWorkout("CAMINHADA") },
                 enabled = !uiState.isSubmitting,
