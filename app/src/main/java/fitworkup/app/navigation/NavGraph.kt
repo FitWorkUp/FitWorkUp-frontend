@@ -4,9 +4,9 @@ import androidx.compose.runtime.Composable
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.fitworkup.app.ui.screens.profile.ConfigScreen
 import com.fitworkup.app.ui.screens.home.HomeScreen
 import com.fitworkup.app.ui.screens.login.OnboardingScreen
-import com.fitworkup.app.ui.screens.profile.ConfigScreen
 import com.fitworkup.app.ui.screens.splash.SplashScreen
 import com.fitworkup.app.ui.screens.workout.WorkoutScreen
 import fitworkup.app.ui.screens.login.LoginScreen
@@ -16,7 +16,7 @@ object Routes {
     const val ONBOARDING  = "onboarding"
     const val LOGIN       = "login"
     const val HOME        = "home"
-    const val WORKOUT     = "Workout"
+    const val WORKOUT     = "workout"
     const val CONFIG      = "config"
 }
 
@@ -37,7 +37,7 @@ fun NavGraph() {
         }
 
         composable(Routes.ONBOARDING) {
-            OnboardingScreen(onNavigateToLogin = {
+            OnboardingScreen(onFinishOnboarding = {
                 navController.navigate(Routes.LOGIN) {
                     popUpTo(Routes.ONBOARDING) { inclusive = true }
                 }

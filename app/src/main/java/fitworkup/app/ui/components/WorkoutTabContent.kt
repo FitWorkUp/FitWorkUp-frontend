@@ -17,8 +17,11 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.fitworkup.app.ui.components.MiniMapa
 import com.fitworkup.app.ui.components.MonthlyProgressCard
+import com.fitworkup.app.ui.screens.dashboard.DashboardViewModel
 
 @Composable
 fun WorkoutTabContent(
@@ -28,12 +31,14 @@ fun WorkoutTabContent(
     dailyStepGoal: Int = 10000,
     totalKmToday: Float = 0.0f,
     caloriesBurnedToday: Int = 0,
-    onStartWorkout: () -> Unit
+    onStartWorkout: () -> Unit,
+    dashboardViewModel: DashboardViewModel = hiltViewModel()
 ) {
+    val dashboardState by dashboardViewModel.uiState.collectAsStateWithLifecycle()
     val scrollState = rememberScrollState()
     var showGoalBottomSheet by remember { mutableStateOf(false) }
 
-    // Cálculo dinâmico do progresso diário de passos (de 0.0 a 1.0)
+    // Progresso do anel de passos (0.0f a 1.0f)
     val stepProgress = if (dailyStepGoal > 0) {
         (currentSteps.toFloat() / dailyStepGoal.toFloat()).coerceIn(0f, 1f)
     } else 0f
@@ -52,7 +57,9 @@ fun WorkoutTabContent(
         ) {
             // 1. CABEÇALHO DINÂMICO
             Row(
-                modifier = Modifier.fillMaxWidth().padding(bottom = 20.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 20.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -62,7 +69,11 @@ fun WorkoutTabContent(
                         color = MaterialTheme.colorScheme.primaryContainer,
                         modifier = Modifier.size(40.dp)
                     ) {
-                        Icon(Icons.Default.Person, contentDescription = "Perfil", modifier = Modifier.padding(8.dp))
+                        Icon(
+                            imageVector = Icons.Default.Person,
+                            contentDescription = "Perfil",
+                            modifier = Modifier.padding(8.dp)
+                        )
                     }
                     Spacer(modifier = Modifier.width(12.dp))
                     Text("Olá, $userName!", fontWeight = FontWeight.Bold, fontSize = 16.sp)
@@ -79,12 +90,11 @@ fun WorkoutTabContent(
                 }
             }
 
-            // 2. ANEL DE META DIÁRIA DE PASSOS (KPI CENTRAL REESTRUTURADO)
+            // 2. TÓPICO 1: ANEL DE META DIÁRIA DE PASSOS
             Box(
                 contentAlignment = Alignment.Center,
                 modifier = Modifier.size(200.dp)
             ) {
-                // Trilho de Fundo do Círculo
                 CircularProgressIndicator(
                     progress = { 1.0f },
                     modifier = Modifier.fillMaxSize(),
@@ -92,7 +102,6 @@ fun WorkoutTabContent(
                     color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
                     strokeCap = StrokeCap.Round
                 )
-                // Barra de Progresso Real
                 CircularProgressIndicator(
                     progress = { stepProgress },
                     modifier = Modifier.fillMaxSize(),
@@ -101,7 +110,6 @@ fun WorkoutTabContent(
                     strokeCap = StrokeCap.Round
                 )
 
-                // Texto Interno do Anel
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Icon(
                         imageVector = Icons.Default.DirectionsRun,
@@ -125,7 +133,7 @@ fun WorkoutTabContent(
 
             Spacer(modifier = Modifier.height(28.dp))
 
-            // 3. DUETO DE PERFORMANCE COM DADOS REAIS
+            // 3. TÓPICO 2 E 3: DUETO DE PERFORMANCE (DISTÂNCIA E CALORIAS)
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(16.dp)
@@ -144,8 +152,16 @@ fun WorkoutTabContent(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // 4. GRÁFICO HISTÓRICO MENSAL
-            MonthlyProgressCard()
+            // 4. GRÁFICO HISTÓRICO MENSAL INTEGRADO AO VIEWMODEL
+            MonthlyProgressCard(
+                monthlyData = dashboardState.monthlyProgress,
+                selectedYearMonth = dashboardState.selectedYearMonth,
+                focusedDay = dashboardState.focusedDay,
+                dayActivities = dashboardState.focusedDayActivities,
+                dayTotalKm = dashboardState.focusedDayTotalKm,
+                onMonthChanged = dashboardViewModel::onMonthChanged,
+                onDayFocused = dashboardViewModel::onDayFocused
+            )
 
             Spacer(modifier = Modifier.height(24.dp))
 

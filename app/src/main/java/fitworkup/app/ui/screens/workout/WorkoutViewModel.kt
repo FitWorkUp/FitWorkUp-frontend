@@ -4,6 +4,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.fitworkup.app.data.remote.dto.ActivityRequest
 import com.fitworkup.app.domain.repository.ActivityRepository
+import com.fitworkup.app.domain.security.StepAntiFraudEvaluator
+import com.fitworkup.app.service.WorkoutSensorService
+import com.fitworkup.app.service.WorkoutState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -13,31 +16,62 @@ import kotlinx.coroutines.launch
 
 @HiltViewModel
 class WorkoutViewModel @Inject constructor(
-    private val activityRepository: ActivityRepository
+    private val activityRepository: ActivityRepository,
+    private val antiFraudEvaluator: StepAntiFraudEvaluator
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(WorkoutUiState())
     val uiState: StateFlow<WorkoutUiState> = _uiState.asStateFlow()
 
-    fun onStepEvaluated(isAccepted: Boolean, currentRiskScore: Int, reason: String?, distanceKm: Double, avgSpeed: Double) {
-        val currentState = _uiState.value
-        val newAccepted = if (isAccepted) currentState.acceptedSteps + 1 else currentState.acceptedSteps
-        val newHeld = if (!isAccepted) currentState.heldSteps + 1 else currentState.heldSteps
+    private var boundService: WorkoutSensorService? = null
+    private var lastProcessedSteps: Int = 0
 
-        val updatedReasons = currentState.fraudReasons.toMutableList()
-        if (!reason.isNullOrBlank() && !updatedReasons.contains(reason)) {
-            updatedReasons.add(reason)
+    fun onServiceConnected(service: WorkoutSensorService) {
+        boundService = service
+        viewModelScope.launch {
+            service.workoutState.collect { sensorState ->
+                processSensorState(sensorState)
+            }
         }
+    }
 
-        _uiState.value = currentState.copy(
-            totalSteps = newAccepted + newHeld,
-            acceptedSteps = newAccepted,
-            heldSteps = newHeld,
-            distanceKm = distanceKm,
-            avgSpeedKmH = avgSpeed,
-            riskScore = currentRiskScore,
-            fraudReasons = updatedReasons
-        )
+    private fun processSensorState(sensorState: WorkoutState) {
+        val distanceKm = (sensorState.distanceMeters / 1000.0)
+        val speedKmH = (sensorState.speedMps * 3.6)
+
+        val newStepCount = sensorState.steps
+        val stepDelta = newStepCount - lastProcessedSteps
+
+        if (stepDelta > 0) {
+            val eval = antiFraudEvaluator.evaluateStepDelta(newStepCount, speedKmH)
+            lastProcessedSteps = newStepCount
+
+            val currentState = _uiState.value
+            val newAccepted = if (eval.isAccepted) currentState.acceptedSteps + stepDelta else currentState.acceptedSteps
+            val newHeld = if (!eval.isAccepted) currentState.heldSteps + stepDelta else currentState.heldSteps
+
+            val updatedReasons = currentState.fraudReasons.toMutableList()
+            if (!eval.reason.isNullOrBlank() && !updatedReasons.contains(eval.reason)) {
+                updatedReasons.add(eval.reason)
+            }
+
+            _uiState.value = currentState.copy(
+                isTracking = sensorState.isTracking,
+                totalSteps = newStepCount,
+                acceptedSteps = newAccepted,
+                heldSteps = newHeld,
+                distanceKm = distanceKm,
+                avgSpeedKmH = speedKmH,
+                riskScore = currentState.riskScore + eval.riskDelta,
+                fraudReasons = updatedReasons
+            )
+        } else {
+            _uiState.value = _uiState.value.copy(
+                isTracking = sensorState.isTracking,
+                distanceKm = distanceKm,
+                avgSpeedKmH = speedKmH
+            )
+        }
     }
 
     fun finishWorkout(activityType: String) {

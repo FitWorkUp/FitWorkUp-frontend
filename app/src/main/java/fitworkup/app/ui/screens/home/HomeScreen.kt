@@ -17,9 +17,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.fitworkup.app.ui.screens.ranking.RankingTabContent
+import androidx.hilt.navigation.compose.hiltViewModel
+import com.fitworkup.app.ui.screens.dashboard.DashboardViewModel
 import com.fitworkup.app.ui.screens.home.components.WorkoutTabContent
 import com.fitworkup.app.ui.screens.profile.ProfileScreen
+import com.fitworkup.app.ui.screens.ranking.RankingTabContent
 import com.fitworkup.app.ui.screens.store.StorePoints
 
 sealed class HomeTab(
@@ -28,7 +30,8 @@ sealed class HomeTab(
     val selectedIcon: ImageVector,
     val unselectedIcon: ImageVector
 ) {
-    object Workout : HomeTab("workout", "Treino",
+    object Workout : HomeTab(
+        "workout", "Treino",
         Icons.AutoMirrored.Filled.DirectionsRun, Icons.AutoMirrored.Outlined.DirectionsRun
     )
     object Ranking : HomeTab("ranking", "Ranking", Icons.Filled.EmojiEvents, Icons.Outlined.EmojiEvents)
@@ -39,7 +42,8 @@ sealed class HomeTab(
 @Composable
 fun HomeScreen(
     onStartWorkoutClick: () -> Unit,
-    onSettingsClick: () -> Unit
+    onSettingsClick: () -> Unit,
+    dashboardViewModel: DashboardViewModel = hiltViewModel()
 ) {
     var currentTabRoute by rememberSaveable { mutableStateOf(HomeTab.Workout.route) }
     val tabs = listOf(HomeTab.Workout, HomeTab.Ranking, HomeTab.Store, HomeTab.Profile)
@@ -83,7 +87,10 @@ fun HomeScreen(
                 .padding(innerPadding)
         ) {
             when (currentTab) {
-                is HomeTab.Workout -> WorkoutTabContent(onStartWorkout = onStartWorkoutClick)
+                is HomeTab.Workout -> WorkoutTabContent(
+                    onStartWorkout = onStartWorkoutClick,
+                    dashboardViewModel = dashboardViewModel
+                )
                 is HomeTab.Ranking -> RankingTabContent()
                 is HomeTab.Store   -> StorePoints()
                 is HomeTab.Profile -> ProfileScreen(onSettingsClick = onSettingsClick)

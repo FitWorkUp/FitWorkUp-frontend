@@ -74,7 +74,7 @@ class WorkoutSensorService : Service(), SensorEventListener {
             ACTION_START -> startWorkout()
             ACTION_STOP -> stopWorkout()
         }
-        return START_STICKY
+        return START_NOT_STICKY
     }
 
     private fun initSensors() {
@@ -97,7 +97,8 @@ class WorkoutSensorService : Service(), SensorEventListener {
     private fun startWorkout() {
         createNotificationChannel()
 
-        // 🔒 INICIALIZAÇÃO SEGURA DO FOREGROUND SERVICE COMPATÍVEL COM ANDROID 14+
+        _workoutState.value = _workoutState.value.copy(isTracking = true)
+
         val notification = buildNotification()
         val serviceType = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
             ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION or ServiceInfo.FOREGROUND_SERVICE_TYPE_HEALTH
@@ -119,21 +120,34 @@ class WorkoutSensorService : Service(), SensorEventListener {
         }
 
         startLocationUpdates()
-
-        _workoutState.value = _workoutState.value.copy(isTracking = true)
     }
 
     private fun stopWorkout() {
-        sensorManager.unregisterListener(this)
-        fusedLocationClient.removeLocationUpdates(locationCallback)
-
-        stopForeground(STOP_FOREGROUND_REMOVE)
-        stopSelf()
-
+        // 1. Marca o rastreamento como inativo para interromper novos alertas de notificação
         _workoutState.value = _workoutState.value.copy(isTracking = false)
+
+        // 2. Desvincula o sensor de passos
+        stepCounterSensor?.let { sensor ->
+            sensorManager.unregisterListener(this, sensor)
+        }
+
+        // 3. Desvincula as atualizações do GPS
+        if (::fusedLocationClient.isInitialized && ::locationCallback.isInitialized) {
+            fusedLocationClient.removeLocationUpdates(locationCallback)
+        }
+
+        // 4. Parada explícita de Foreground e remoção da notificação do NotificationManager
+        ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
+        val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        notificationManager.cancel(NOTIFICATION_ID)
+
+        // 5. Finaliza o ciclo de vida do serviço
+        stopSelf()
     }
 
     override fun onSensorChanged(event: SensorEvent?) {
+        if (!_workoutState.value.isTracking) return
+
         if (event?.sensor?.type == Sensor.TYPE_STEP_COUNTER) {
             val totalStepsSinceBoot = event.values[0].toInt()
 
@@ -173,6 +187,8 @@ class WorkoutSensorService : Service(), SensorEventListener {
     }
 
     private fun updateLocationAndDistance(newLocation: Location) {
+        if (!_workoutState.value.isTracking) return
+
         val isMock = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             newLocation.isMock
         } else {
@@ -214,6 +230,7 @@ class WorkoutSensorService : Service(), SensorEventListener {
     }
 
     private fun updateNotification() {
+        if (!_workoutState.value.isTracking) return
         val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         notificationManager.notify(NOTIFICATION_ID, buildNotification())
     }
@@ -236,7 +253,7 @@ class WorkoutSensorService : Service(), SensorEventListener {
         private const val CHANNEL_ID = "workout_sensor_channel"
         private const val NOTIFICATION_ID = 1001
 
-        private const val LOCATION_INTERVAL_MS = 10000L
-        private const val LOCATION_FASTEST_INTERVAL_MS = 5000L
+        private const val LOCATION_INTERVAL_MS = 5000L
+        private const val LOCATION_FASTEST_INTERVAL_MS = 2000L
     }
 }

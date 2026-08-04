@@ -57,6 +57,7 @@ android {
 }
 
 dependencies {
+    implementation("androidx.core:core-splashscreen:1.0.1")
     implementation(libs.androidx.compose.runtime)
     // Core & Lifecycle
     implementation(libs.androidx.core.ktx)

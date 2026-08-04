@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -13,6 +14,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.DirectionsRun
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -22,6 +24,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.fitworkup.app.domain.repository.UserActivityItem
 import java.time.Instant
 import java.time.LocalDate
 import java.time.YearMonth
@@ -30,7 +33,6 @@ import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
-// Data Model com estado de seleção individual de dia
 data class DailyRunProgress(
     val day: Int,
     val distanceKm: Float,
@@ -41,25 +43,22 @@ data class DailyRunProgress(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MonthlyProgressCard(
+    monthlyData: List<DailyRunProgress>,
+    selectedYearMonth: YearMonth,
+    focusedDay: Int?,
+    dayActivities: List<UserActivityItem> = emptyList(),
+    dayTotalKm: Double = 0.0,
+    onMonthChanged: (YearMonth) -> Unit,
+    onDayFocused: (Int?) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    // 1. Estados Temporais e Seleção
     val today = remember { LocalDate.now() }
     val currentYearMonth = remember { YearMonth.now() }
-
-    var selectedYearMonth by remember { mutableStateOf(currentYearMonth) }
-    var focusedDay by remember { mutableStateOf<Int?>(null) }
     var showDatePickerDialog by remember { mutableStateOf(false) }
 
-    // Título do Mês Formatado (ex: "Julho 2026")
     val monthTitle = remember(selectedYearMonth) {
         val formatter = DateTimeFormatter.ofPattern("MMMM yyyy", Locale("pt", "BR"))
         selectedYearMonth.format(formatter).replaceFirstChar { it.uppercase() }
-    }
-
-    // 2. Dados do Mês
-    val monthlyData = remember(selectedYearMonth, focusedDay) {
-        getMockDataForYearMonth(selectedYearMonth, today, focusedDay)
     }
 
     val totalKm = monthlyData.sumOf { it.distanceKm.toDouble() }.toFloat()
@@ -75,22 +74,16 @@ fun MonthlyProgressCard(
     ) {
         Column(modifier = Modifier.padding(20.dp)) {
 
-            // ─── CABEÇALHO COM COMBO: NAVEGAÇÃO + BOTÃO DE CALENDÁRIO ─────────
+            // CABEÇALHO
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                IconButton(
-                    onClick = {
-                        focusedDay = null
-                        selectedYearMonth = selectedYearMonth.minusMonths(1)
-                    }
-                ) {
+                IconButton(onClick = { onMonthChanged(selectedYearMonth.minusMonths(1)) }) {
                     Icon(Icons.Default.ChevronLeft, contentDescription = "Mês anterior")
                 }
 
-                // Título e Ícone do Calendário
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(4.dp)
@@ -113,10 +106,7 @@ fun MonthlyProgressCard(
                 }
 
                 IconButton(
-                    onClick = {
-                        focusedDay = null
-                        selectedYearMonth = selectedYearMonth.plusMonths(1)
-                    },
+                    onClick = { onMonthChanged(selectedYearMonth.plusMonths(1)) },
                     enabled = selectedYearMonth < currentYearMonth
                 ) {
                     Icon(Icons.Default.ChevronRight, contentDescription = "Próximo mês")
@@ -125,7 +115,7 @@ fun MonthlyProgressCard(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // ─── RESUMO DAS MÉTRICAS ─────────────────────────────────────────
+            // RESUMO DAS MÉTRICAS MENSARIA
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceAround
@@ -145,7 +135,7 @@ fun MonthlyProgressCard(
                 }
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
-                        text = "Atividades",
+                        text = "Dias com Treino",
                         fontSize = 12.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                     )
@@ -160,14 +150,13 @@ fun MonthlyProgressCard(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // ─── GRÁFICO DE BARRAS ROLÁVEL ──────────────────────────────────
+            // GRÁFICO DE BARRAS ROLÁVEL
             val listState = rememberLazyListState()
 
-            // Efeito para centralizar e rolar para o dia focado ou dia atual
-            LaunchedEffect(selectedYearMonth, focusedDay) {
+            LaunchedEffect(selectedYearMonth, focusedDay, monthlyData) {
                 if (monthlyData.isNotEmpty()) {
                     val targetIndex = when {
-                        focusedDay != null -> (focusedDay!! - 1).coerceIn(0, monthlyData.lastIndex)
+                        focusedDay != null -> (focusedDay - 1).coerceIn(0, monthlyData.lastIndex)
                         selectedYearMonth == currentYearMonth -> (today.dayOfMonth - 1).coerceIn(0, monthlyData.lastIndex)
                         else -> monthlyData.lastIndex
                     }
@@ -178,7 +167,7 @@ fun MonthlyProgressCard(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(160.dp),
+                    .height(140.dp),
                 contentAlignment = Alignment.BottomStart
             ) {
                 LazyRow(
@@ -191,16 +180,96 @@ fun MonthlyProgressCard(
                         BarItem(
                             progress = progress,
                             maxDistance = maxDistance,
-                            maxBarHeightDp = 110,
-                            onDayClick = { day -> focusedDay = if (focusedDay == day) null else day }
+                            maxBarHeightDp = 90,
+                            onDayClick = { day -> onDayFocused(day) }
                         )
+                    }
+                }
+            }
+
+            // DETALHAMENTO DO DIA SELECIONADO
+            if (focusedDay != null) {
+                Spacer(modifier = Modifier.height(20.dp))
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Text(
+                    text = "Atividades do dia $focusedDay de ${selectedYearMonth.month.name.lowercase().replaceFirstChar { it.uppercase() }}",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+
+                Text(
+                    text = String.format(Locale.getDefault(), "Total no dia: %.2f km", dayTotalKm),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.padding(vertical = 4.dp)
+                )
+
+                if (dayActivities.isEmpty()) {
+                    Text(
+                        text = "Nenhuma atividade registrada neste dia.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = 8.dp)
+                    )
+                } else {
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.padding(top = 8.dp)
+                    ) {
+                        dayActivities.forEachIndexed { index, activity ->
+                            ElevatedCard(
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = CardDefaults.elevatedCardColors(
+                                    containerColor = MaterialTheme.colorScheme.surface
+                                )
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(12.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.DirectionsRun,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.primary
+                                        )
+                                        Column {
+                                            Text(
+                                                text = "Atividade #${index + 1} - ${activity.type}",
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                fontWeight = FontWeight.Bold
+                                            )
+                                            Text(
+                                                text = "${activity.steps} passos",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
+                                    }
+                                    Text(
+                                        text = String.format(Locale.getDefault(), "%.2f km", activity.distanceKm),
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.ExtraBold,
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
             }
         }
     }
 
-    // ─── DIÁLOGO DO CALENDÁRIO MATERIAL 3 ───────────────────────────────────
     if (showDatePickerDialog) {
         val initialEpochMillis = selectedYearMonth.atDay(1)
             .atStartOfDay(ZoneOffset.UTC)
@@ -221,11 +290,9 @@ fun MonthlyProgressCard(
                                 .atZone(ZoneId.systemDefault())
                                 .toLocalDate()
 
-                            // Segurança: Não permite filtrar datas futuras
                             val validDate = if (selectedLocalDate.isAfter(today)) today else selectedLocalDate
-
-                            selectedYearMonth = YearMonth.from(validDate)
-                            focusedDay = validDate.dayOfMonth
+                            onMonthChanged(YearMonth.from(validDate))
+                            onDayFocused(validDate.dayOfMonth)
                         }
                         showDatePickerDialog = false
                     }
@@ -253,7 +320,6 @@ fun MonthlyProgressCard(
     }
 }
 
-// ─── COMPONENTE DA BARRA INDIVIDUAL ──────────────────────────────────────────
 @Composable
 private fun BarItem(
     progress: DailyRunProgress,
@@ -273,10 +339,9 @@ private fun BarItem(
             .width(32.dp)
             .clickable { onDayClick(progress.day) }
     ) {
-        // Balão de KM flutuante
         if (progress.isFocused && progress.distanceKm > 0f) {
             Text(
-                text = "${progress.distanceKm} km",
+                text = String.format(Locale.getDefault(), "%.1f", progress.distanceKm),
                 fontSize = 10.sp,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.primary,
@@ -286,7 +351,6 @@ private fun BarItem(
             Spacer(modifier = Modifier.height(14.dp))
         }
 
-        // Barra Física
         Box(
             modifier = Modifier
                 .width(12.dp)
@@ -312,7 +376,6 @@ private fun BarItem(
 
         Spacer(modifier = Modifier.height(6.dp))
 
-        // Rótulo Inferior do Dia
         Text(
             text = progress.day.toString(),
             fontSize = 11.sp,
@@ -326,42 +389,4 @@ private fun BarItem(
             textAlign = TextAlign.Center
         )
     }
-}
-
-// ─── SIMULAÇÃO DE DADOS MOCKADOS COM SUPORTE A FOCO ───────────────────────────
-private fun getMockDataForYearMonth(
-    yearMonth: YearMonth,
-    today: LocalDate,
-    focusedDay: Int?
-): List<DailyRunProgress> {
-    val list = mutableListOf<DailyRunProgress>()
-    val totalDaysInMonth = yearMonth.lengthOfMonth()
-    val isCurrentMonth = (yearMonth.year == today.year && yearMonth.monthValue == today.monthValue)
-
-    val step = (yearMonth.monthValue % 3) + 2
-
-    for (day in 1..totalDaysInMonth) {
-        val isToday = isCurrentMonth && (day == today.dayOfMonth)
-        val isFocused = (focusedDay == day)
-
-        val distance = if (isCurrentMonth && day > today.dayOfMonth) {
-            0f
-        } else if (day % step == 0) {
-            (2..7).random() + (0..9).random() / 10f
-        } else if (day % 7 == 0) {
-            10.2f
-        } else {
-            0f
-        }
-
-        list.add(
-            DailyRunProgress(
-                day = day,
-                distanceKm = distance,
-                isToday = isToday,
-                isFocused = isFocused
-            )
-        )
-    }
-    return list
 }

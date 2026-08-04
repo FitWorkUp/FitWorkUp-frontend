@@ -2,6 +2,7 @@ package com.fitworkup.app.ui.screens.splash
 
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.MaterialTheme
@@ -11,13 +12,24 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.fitworkup.app.R
 import kotlinx.coroutines.delay
-import androidx.compose.foundation.shape.RoundedCornerShape
 
 private const val SPLASH_DELAY_MS = 2000L
+
+private val MOTIVATIONAL_QUOTES = listOf(
+    "SUBA DE NÍVEL A CADA QUILÔMETRO ⚡",
+    "CADA PASSO CONTA PARA O SEU RANKING 🏆",
+    "TRANSFORME SUAS PASSADAS EM FITCOINS 🪙",
+    "SUPERANDO SEUS LIMITES HOJE 🔥",
+    "SUA MELHOR VERSÃO EM CONSTRUÇÃO 🏃",
+    "CONSTÂNCIA GERA RESULTADOS 💪"
+)
 
 @Composable
 fun SplashScreen(
@@ -25,6 +37,7 @@ fun SplashScreen(
 ) {
     val alpha = remember { Animatable(0f) }
     val scale = remember { Animatable(0.8f) }
+    val randomQuote = remember { MOTIVATIONAL_QUOTES.random() }
 
     LaunchedEffect(Unit) {
         // Animação suave de entrada (Fade-in + Scale)
@@ -40,27 +53,23 @@ fun SplashScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background), // Usando o fundo oficial do tema
+            .background(MaterialTheme.colorScheme.background),
         contentAlignment = Alignment.Center
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
             modifier = Modifier
+                .padding(24.dp)
                 .alpha(alpha.value)
                 .scale(scale.value)
         ) {
-            // Emblema simplificado do FitWorkUp (Substitua por um Image/Icon se preferir)
-            Box(
-                modifier = Modifier
-                    .size(80.dp)
-                    .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(20.dp)),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(text = "⚡", fontSize = 40.sp)
-            }
-
-            Spacer(modifier = Modifier.height(8.dp))
+            // 👟 Imagem do Tênis de Corrida substituindo o bloco antigo com o emoji ⚡
+            Image(
+                painter = painterResource(id = R.drawable.corrida),
+                contentDescription = "FitWorkUp Logo",
+                modifier = Modifier.size(160.dp)
+            )
 
             Text(
                 text = "FitWorkUp",
@@ -70,11 +79,13 @@ fun SplashScreen(
             )
 
             Text(
-                text = "SUBA DE NÍVEL A CADA QUILÔMETRO ",
+                text = randomQuote,
                 fontSize = 12.sp,
-                fontWeight = FontWeight.Medium,
-                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.4f),
-                letterSpacing = 2.sp
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.primary,
+                letterSpacing = 1.2.sp,
+                textAlign = TextAlign.Center,
+                lineHeight = 18.sp
             )
         }
     }

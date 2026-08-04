@@ -1,30 +1,32 @@
 package com.fitworkup.app.ui.screens.login
 
-import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import kotlinx.coroutines.launch
-import com.fitworkup.app.domain.model.pages
+import com.fitworkup.app.domain.model.OnboardingData
+import com.fitworkup.app.domain.model.OnboardingHighlight
 import com.fitworkup.app.domain.model.OnboardingPage
+import kotlinx.coroutines.launch
 
 @Composable
 fun OnboardingScreen(
-    onNavigateToLogin: () -> Unit
+    onFinishOnboarding: () -> Unit
 ) {
+    val pages = OnboardingData.pages
     val pagerState = rememberPagerState(pageCount = { pages.size })
     val scope = rememberCoroutineScope()
 
@@ -32,62 +34,78 @@ fun OnboardingScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
-            .padding(horizontal = 24.dp)
+            .statusBarsPadding()
+            .navigationBarsPadding()
+            .padding(24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
+        // Botão PULAR no topo direito para dar agilidade ao usuário
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.End
+        ) {
+            TextButton(onClick = onFinishOnboarding) {
+                Text(
+                    text = "PULAR",
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontSize = 14.sp
+                )
+            }
+        }
+
+        // Pager com o conteúdo do Onboarding
         HorizontalPager(
             state = pagerState,
             modifier = Modifier.weight(1f)
-        ) { index ->
-            OnboardingPageContent(page = pages[index])
+        ) { pageIndex ->
+            OnboardingPageContent(page = pages[pageIndex])
         }
 
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 40.dp)
+        // Indicadores de página (Dots)
+        Row(
+            modifier = Modifier.padding(vertical = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            PagerDots(
-                pageCount = pages.size,
-                currentPage = pagerState.currentPage
-            )
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            val isLastPage = pagerState.currentPage == pages.size - 1
-            Button(
-                onClick = {
-                    if (isLastPage) {
-                        onNavigateToLogin()
-                    } else {
-                        scope.launch {
-                            pagerState.animateScrollToPage(pagerState.currentPage + 1)
-                        }
-                    }
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(52.dp),
-                shape = RoundedCornerShape(14.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
-            ) {
-                Text(
-                    text = if (isLastPage) "Criar minha conta" else "Próximo",
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.SemiBold
+            repeat(pages.size) { index ->
+                val isSelected = pagerState.currentPage == index
+                Box(
+                    modifier = Modifier
+                        .size(if (isSelected) 12.dp else 8.dp)
+                        .clip(CircleShape)
+                        .background(
+                            if (isSelected) MaterialTheme.colorScheme.primary
+                            else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
+                        )
                 )
             }
+        }
 
-            if (!isLastPage) {
-                Spacer(modifier = Modifier.height(12.dp))
-                TextButton(onClick = onNavigateToLogin) {
-                    Text(
-                        text = "Pular",
-                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f),
-                        fontSize = 14.sp
-                    )
+        // Botão de Avanço / Início
+        Button(
+            onClick = {
+                if (pagerState.currentPage < pages.lastIndex) {
+                    scope.launch {
+                        pagerState.animateScrollToPage(pagerState.currentPage + 1)
+                    }
+                } else {
+                    onFinishOnboarding()
                 }
-            }
+            },
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(56.dp),
+            shape = RoundedCornerShape(16.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = MaterialTheme.colorScheme.primary
+            )
+        ) {
+            Text(
+                text = if (pagerState.currentPage == pages.lastIndex) "COMEÇAR AGORA" else "CONTINUAR",
+                fontWeight = FontWeight.Bold,
+                fontSize = 16.sp
+            )
         }
     }
 }
@@ -97,30 +115,23 @@ private fun OnboardingPageContent(page: OnboardingPage) {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(top = 48.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
+            .padding(horizontal = 8.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
     ) {
-        Box(
-            modifier = Modifier
-                .size(88.dp)
-                .background(
-                    MaterialTheme.colorScheme.surfaceVariant,
-                    RoundedCornerShape(24.dp)
-                ),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(text = page.emoji, fontSize = 36.sp)
-        }
-
-        Spacer(modifier = Modifier.height(28.dp))
+        Text(
+            text = page.emoji,
+            fontSize = 72.sp,
+            modifier = Modifier.padding(bottom = 24.dp)
+        )
 
         Text(
             text = page.title,
-            fontSize = 22.sp,
+            fontSize = 24.sp,
             fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onBackground,
             textAlign = TextAlign.Center,
-            lineHeight = 30.sp
+            color = MaterialTheme.colorScheme.onBackground,
+            lineHeight = 32.sp
         )
 
         Spacer(modifier = Modifier.height(12.dp))
@@ -128,44 +139,57 @@ private fun OnboardingPageContent(page: OnboardingPage) {
         Text(
             text = page.description,
             fontSize = 14.sp,
-            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
             textAlign = TextAlign.Center,
-            lineHeight = 22.sp
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            lineHeight = 20.sp
         )
 
-        Spacer(modifier = Modifier.height(32.dp))
-
-        when {
-            page.highlightA.isNotEmpty() -> {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    XpCard(
-                        value = page.highlightA,
-                        label = page.highlightLabelA,
-                        background = MaterialTheme.colorScheme.primaryContainer,
-                        textColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                        modifier = Modifier.weight(1f)
-                    )
-                    XpCard(
-                        value = page.highlightB,
-                        label = page.highlightLabelB,
-                        background = MaterialTheme.colorScheme.surfaceVariant,
-                        textColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.weight(1f)
-                    )
+        // Renderização dos Badges / Destaques
+        if (page.highlightA != null || page.highlightB != null) {
+            Spacer(modifier = Modifier.height(24.dp))
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                page.highlightA?.let { highlight ->
+                    HighlightCard(highlight = highlight)
+                }
+                page.highlightB?.let { highlight ->
+                    HighlightCard(highlight = highlight)
                 }
             }
+        }
 
-            page.emoji == "🏆" -> {
-                RankingPreview()
-            }
-
-            page.checkItems.isNotEmpty() -> {
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    page.checkItems.forEach { item ->
-                        CheckItem(text = item)
+        // Renderização dos Itens de Validação
+        if (page.checkItems.isNotEmpty()) {
+            Spacer(modifier = Modifier.height(24.dp))
+            Column(
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                page.checkItems.forEach { itemText ->
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Surface(
+                            shape = CircleShape,
+                            color = MaterialTheme.colorScheme.primaryContainer,
+                            modifier = Modifier.size(24.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Check,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.padding(4.dp)
+                            )
+                        }
+                        Text(
+                            text = itemText,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.onBackground
+                        )
                     }
                 }
             }
@@ -174,119 +198,25 @@ private fun OnboardingPageContent(page: OnboardingPage) {
 }
 
 @Composable
-private fun XpCard(
-    value: String,
-    label: String,
-    background: Color,
-    textColor: Color,
-    modifier: Modifier = Modifier
-) {
-    Column(
-        modifier = modifier
-            .clip(RoundedCornerShape(14.dp))
-            .background(background)
-            .padding(vertical = 16.dp, horizontal = 12.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
+private fun HighlightCard(highlight: OnboardingHighlight) {
+    Surface(
+        shape = RoundedCornerShape(12.dp),
+        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
     ) {
-        Text(text = value, fontSize = 24.sp, fontWeight = FontWeight.Bold, color = textColor)
-        Text(text = label, fontSize = 12.sp, color = textColor.copy(alpha = 0.8f), textAlign = TextAlign.Center)
-    }
-}
-
-@Composable
-private fun RankingPreview() {
-    val mockUsers = listOf(
-        Triple("1", "VelocistaBR", "4.820 xp"),
-        Triple("2", "RunnerK",     "3.110 xp"),
-        Triple("3", "MarinaFit",   "2.740 xp")
-    )
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .background(MaterialTheme.colorScheme.surfaceVariant)
-            .padding(14.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp)
-    ) {
-        mockUsers.forEach { (pos, nome, xp) ->
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text(
-                    text = pos,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = if (pos == "1") MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
-                    modifier = Modifier.width(16.dp)
-                )
-
-                Box(
-                    modifier = Modifier
-                        .size(32.dp)
-                        .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f), RoundedCornerShape(50))
-                )
-
-                Text(
-                    text = nome,
-                    fontSize = 14.sp,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.weight(1f)
-                )
-
-                Text(
-                    text = xp,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = if (pos == "1") MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun CheckItem(text: String) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
-            .background(MaterialTheme.colorScheme.surfaceVariant)
-            .padding(horizontal = 16.dp, vertical = 12.dp)
-    ) {
-        Box(
-            modifier = Modifier
-                .size(20.dp)
-                .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(50)),
-            contentAlignment = Alignment.Center
+        Column(
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text("✓", fontSize = 12.sp, color = MaterialTheme.colorScheme.onPrimary, fontWeight = FontWeight.Bold)
-        }
-        Text(text = text, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-    }
-}
-
-@Composable
-private fun PagerDots(pageCount: Int, currentPage: Int) {
-    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-        repeat(pageCount) { index ->
-            val isActive = index == currentPage
-            val width by animateDpAsState(
-                targetValue = if (isActive) 24.dp else 8.dp,
-                animationSpec = tween(250),
-                label = "dot_width_$index"
+            Text(
+                text = highlight.value,
+                fontSize = 20.sp,
+                fontWeight = FontWeight.ExtraBold,
+                color = MaterialTheme.colorScheme.primary
             )
-            Box(
-                modifier = Modifier
-                    .height(8.dp)
-                    .width(width)
-                    .background(
-                        if (isActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.primary.copy(alpha = 0.3f),
-                        RoundedCornerShape(50)
-                    )
+            Text(
+                text = highlight.label,
+                fontSize = 11.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
     }

@@ -1,11 +1,20 @@
 package com.fitworkup.app.ui.screens.workout.components
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.DirectionsRun
+import androidx.compose.material.icons.filled.Shield
+import androidx.compose.material.icons.filled.Speed
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.fitworkup.app.ui.screens.workout.WorkoutUiState
 
@@ -15,55 +24,149 @@ fun WorkoutMetricsSection(
     modifier: Modifier = Modifier
 ) {
     Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(16.dp),
+        modifier = modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        val (badgeText, badgeColor) = if (uiState.riskScore >= 2) {
-            "Sinal Instável / Em Análise" to Color(0xFFFF9800)
-        } else {
-            "Sinal Seguro (Verificado)" to Color(0xFF4CAF50)
+        // Indicador de Integridade Anti-Fraude
+        val isSecure = uiState.riskScore < 5
+        Surface(
+            shape = RoundedCornerShape(20.dp),
+            color = if (isSecure) Color(0xFF1E3A2B) else Color(0xFF3E2723),
+            contentColor = if (isSecure) Color(0xFF81C784) else Color(0xFFFF8A65),
+            modifier = Modifier.padding(vertical = 4.dp)
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Icon(
+                    imageVector = if (isSecure) Icons.Default.Shield else Icons.Default.Warning,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp)
+                )
+                Text(
+                    text = if (isSecure) "Sinal Seguro (Verificado)" else "Risco Detectado (${uiState.riskScore})",
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Bold
+                )
+            }
         }
 
-        Text(
-            text = badgeText,
-            color = badgeColor,
-            style = MaterialTheme.typography.labelLarge,
-            modifier = Modifier.padding(bottom = 8.dp)
+        // Card de Passos Validados vs Em Análise
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            MetricCard(
+                title = "Validados",
+                value = uiState.acceptedSteps.toString(),
+                icon = Icons.Default.CheckCircle,
+                valueColor = Color(0xFF4CAF50),
+                modifier = Modifier.weight(1f)
+            )
+            MetricCard(
+                title = "Em Análise",
+                value = uiState.heldSteps.toString(),
+                icon = Icons.Default.Warning,
+                valueColor = Color(0xFFFFB74D),
+                modifier = Modifier.weight(1f)
+            )
+        }
+
+        // Card de Distância e Velocidade Média
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            MetricCard(
+                title = "Distância",
+                value = String.format("%.2f km", uiState.distanceKm),
+                icon = Icons.Default.DirectionsRun,
+                valueColor = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.weight(1f)
+            )
+            MetricCard(
+                title = "Vel. Média",
+                value = String.format("%.1f km/h", uiState.avgSpeedKmH),
+                icon = Icons.Default.Speed,
+                valueColor = MaterialTheme.colorScheme.secondary,
+                modifier = Modifier.weight(1f)
+            )
+        }
+
+        // Exibição de Alertas de Telemetria
+        if (uiState.fraudReasons.isNotEmpty()) {
+            ElevatedCard(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.elevatedCardColors(
+                    containerColor = MaterialTheme.colorScheme.errorContainer
+                )
+            ) {
+                Column(modifier = Modifier.padding(12.dp)) {
+                    Text(
+                        text = "Alertas de Telemetria:",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.onErrorContainer,
+                        fontWeight = FontWeight.Bold
+                    )
+                    uiState.fraudReasons.forEach { reason ->
+                        Text(
+                            text = "• $reason",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onErrorContainer
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun MetricCard(
+    title: String,
+    value: String,
+    icon: ImageVector,
+    valueColor: Color,
+    modifier: Modifier = Modifier
+) {
+    ElevatedCard(
+        modifier = modifier,
+        colors = CardDefaults.elevatedCardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
         )
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceEvenly
+    ) {
+        Column(
+            modifier = Modifier
+                .padding(16.dp)
+                .fillMaxWidth(),
+            horizontalAlignment = Alignment.Start,
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text("Validados", style = MaterialTheme.typography.bodySmall)
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(16.dp)
+                )
                 Text(
-                    text = "${uiState.acceptedSteps}",
-                    style = MaterialTheme.typography.headlineMedium,
-                    color = Color(0xFF4CAF50)
+                    text = title,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text("Em Análise", style = MaterialTheme.typography.bodySmall)
-                Text(
-                    text = "${uiState.heldSteps}",
-                    style = MaterialTheme.typography.headlineMedium,
-                    color = Color(0xFFFF9800)
-                )
-            }
-        }
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Text("Distância: %.2f km".format(uiState.distanceKm))
-            Text("Vel. Média: %.1f km/h".format(uiState.avgSpeedKmH))
+            Text(
+                text = value,
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.Bold,
+                color = valueColor
+            )
         }
     }
 }
