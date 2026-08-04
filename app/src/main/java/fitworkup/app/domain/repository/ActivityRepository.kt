@@ -25,17 +25,6 @@ class ActivityRepository @Inject constructor(
     private val _activitiesFlow = MutableStateFlow<List<UserActivityItem>>(emptyList())
     val activitiesFlow: StateFlow<List<UserActivityItem>> = _activitiesFlow.asStateFlow()
 
-    data class WorkoutReward(
-        val earnedXp: Int,
-        val earnedCoins: Int
-    )
-
-    fun calculateReward(distanceKm: Double): WorkoutReward {
-        val xp = (distanceKm * 10).toInt()
-        val coins = (distanceKm * 10).toInt()
-        return WorkoutReward(earnedXp = xp, earnedCoins = coins)
-    }
-
     suspend fun registerActivity(request: ActivityRequest): Result<ActivityResponse> {
         return try {
             val response = apiService.registerActivity(request)

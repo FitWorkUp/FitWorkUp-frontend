@@ -8,7 +8,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.outlined.DirectionsRun
+import androidx.compose.material.icons.automirrored.outlined.DirectionsRun
 import androidx.compose.material.icons.outlined.Language
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Share
@@ -26,7 +26,7 @@ import androidx.compose.ui.unit.sp
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ConfigScreen(
-    onBackClick: () -> Unit // 👈 Callback para voltar à tela de Perfil anterior
+    onBackClick: () -> Unit
 ) {
     val scrollState = rememberScrollState()
 
@@ -60,7 +60,7 @@ fun ConfigScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .background(MaterialTheme.colorScheme.background)
-                .padding(innerPadding) // Evita que o conteúdo fique atrás da TopAppBar
+                .padding(innerPadding)
                 .verticalScroll(scrollState)
                 .padding(horizontal = 16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
@@ -71,7 +71,7 @@ fun ConfigScreen(
             SectionHeader(title = "DEFINIÇÃO")
 
             ProfileMenuItem(
-                icon = Icons.Outlined.DirectionsRun,
+                icon = Icons.AutoMirrored.Outlined.DirectionsRun,
                 iconContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
                 iconColor = MaterialTheme.colorScheme.primary,
                 title = "Configurações do treino",
@@ -142,8 +142,8 @@ private fun SectionHeader(title: String) {
 @Composable
 private fun ProfileMenuItem(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
-    iconContainerColor: androidx.compose.ui.graphics.Color,
-    iconColor: androidx.compose.ui.graphics.Color,
+    iconContainerColor: Color,
+    iconColor: Color,
     title: String,
     subtitle: String,
     onClick: () -> Unit

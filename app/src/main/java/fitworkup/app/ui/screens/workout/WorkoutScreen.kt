@@ -34,21 +34,25 @@ fun WorkoutScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
+    val currentViewModel by rememberUpdatedState(viewModel)
 
-    val requiredPermissions = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-        arrayOf(
-            Manifest.permission.ACCESS_FINE_LOCATION,
-            Manifest.permission.ACCESS_COARSE_LOCATION,
-            Manifest.permission.ACTIVITY_RECOGNITION
-        )
-    } else {
-        arrayOf(
+    // Lista dinâmica de permissões por versão de Android (incluindo POST_NOTIFICATIONS para Android 13+)
+    val requiredPermissions = remember {
+        val permissions = mutableListOf(
             Manifest.permission.ACCESS_FINE_LOCATION,
             Manifest.permission.ACCESS_COARSE_LOCATION
         )
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            permissions.add(Manifest.permission.ACTIVITY_RECOGNITION)
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            permissions.add(Manifest.permission.POST_NOTIFICATIONS)
+        }
+        permissions.toTypedArray()
     }
 
     var showPermissionDialog by remember { mutableStateOf(false) }
+    var isBound by remember { mutableStateOf(false) }
 
     fun hasAllPermissions(ctx: Context): Boolean {
         return requiredPermissions.all { perm ->
@@ -56,63 +60,81 @@ fun WorkoutScreen(
         }
     }
 
-    DisposableEffect(Unit) {
-        val serviceIntent = Intent(context, WorkoutSensorService::class.java)
-
-        val connection = object : ServiceConnection {
+    // Instância memorizada da conexão de serviço
+    val connection = remember {
+        object : ServiceConnection {
             override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
                 val binder = service as? WorkoutSensorService.LocalBinder
                 binder?.getService()?.let { sensorService ->
-                    viewModel.onServiceConnected(sensorService)
+                    currentViewModel.onServiceConnected(sensorService)
                 }
             }
 
-            override fun onServiceDisconnected(name: ComponentName?) {}
-        }
-
-        if (hasAllPermissions(context)) {
-            val startIntent = Intent(context, WorkoutSensorService::class.java).apply {
-                action = WorkoutSensorService.ACTION_START
-            }
-            ContextCompat.startForegroundService(context, startIntent)
-            context.bindService(serviceIntent, connection, Context.BIND_AUTO_CREATE)
-        }
-
-        onDispose {
-            try {
-                context.unbindService(connection)
-            } catch (e: Exception) {
-                // Serviço desvinculado com sucesso
+            override fun onServiceDisconnected(name: ComponentName?) {
+                // Tratamento de desconexão inesperada do serviço
             }
         }
     }
 
+    // Função central para iniciar e vincular ao Foreground Service com segurança
+    fun startAndBindService() {
+        try {
+            val startIntent = Intent(context, WorkoutSensorService::class.java).apply {
+                action = WorkoutSensorService.ACTION_START
+            }
+            ContextCompat.startForegroundService(context, startIntent)
+
+            if (!isBound) {
+                val serviceIntent = Intent(context, WorkoutSensorService::class.java)
+                isBound = context.bindService(serviceIntent, connection, Context.BIND_AUTO_CREATE)
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
+    // Lançador do contrato de permissões
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestMultiplePermissions()
     ) { permissionsMap ->
         val allGranted = permissionsMap.values.all { it }
         if (allGranted) {
-            val startIntent = Intent(context, WorkoutSensorService::class.java).apply {
-                action = WorkoutSensorService.ACTION_START
-            }
-            ContextCompat.startForegroundService(context, startIntent)
+            startAndBindService()
         } else {
             showPermissionDialog = true
         }
     }
 
+    // Verificação inicial de permissões
     LaunchedEffect(Unit) {
-        if (!hasAllPermissions(context)) {
+        if (hasAllPermissions(context)) {
+            startAndBindService()
+        } else {
             permissionLauncher.launch(requiredPermissions)
         }
     }
 
+    // Gerenciamento seguro do ciclo de vida para desvinculação do serviço
+    DisposableEffect(context) {
+        onDispose {
+            if (isBound) {
+                try {
+                    context.unbindService(connection)
+                    isBound = false
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
+            }
+        }
+    }
+
+    // Monitoramento do estado de envio e erros
     LaunchedEffect(uiState.submissionSuccess, uiState.errorMessage) {
         if (uiState.submissionSuccess == true) {
             val stopIntent = Intent(context, WorkoutSensorService::class.java).apply {
                 action = WorkoutSensorService.ACTION_STOP
             }
-            context.startService(stopIntent) // Envia a action STOP explicitamente
+            context.stopService(stopIntent)
             Toast.makeText(context, "Treino registrado com sucesso!", Toast.LENGTH_SHORT).show()
             onWorkoutFinished()
         } else if (uiState.errorMessage != null) {
@@ -120,13 +142,14 @@ fun WorkoutScreen(
         }
     }
 
+    // Diálogo informativo em caso de negação de permissões
     if (showPermissionDialog) {
         AlertDialog(
             onDismissRequest = { },
             title = { Text("Permissões Necessárias") },
             text = {
                 Text(
-                    "O FitWorkUp precisa de acesso ao seu GPS (Localização) e aos Sensores de Atividade Física para contagem de passos e validação anti-fraude em tempo real."
+                    "O FitWorkUp precisa de acesso ao seu GPS (Localização), Notificações e aos Sensores de Atividade Física para contagem de passos e validação do treino."
                 )
             },
             confirmButton = {
