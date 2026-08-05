@@ -8,8 +8,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MilitaryTech
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -17,129 +20,195 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
+import com.fitworkup.app.domain.model.LeagueInfo
+import com.fitworkup.app.domain.model.RankingUiState
+import com.fitworkup.app.ui.screens.ranking.components.RankingViewModel
 
 @Composable
-fun RankingTabContent() {
-    val scrollState = rememberScrollState()
+fun RankingTabRoute(
+    viewModel: RankingViewModel = hiltViewModel()
+) {
+    val uiState by viewModel.uiState.collectAsState()
+    RankingTabContent(
+        uiState = uiState,
+        onRetry = { viewModel.loadRanking() }
+    )
+}
 
-    // ─── 1. CONTAINER PAI (Organiza a tela verticalmente)
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
-            .padding(16.dp)
-            .verticalScroll(scrollState),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-
-        // ─── 2. CABEÇALHO DA LIGA (Card Informativo)
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer),
-            shape = RoundedCornerShape(16.dp)
-        ) {
-            Row(
-                modifier = Modifier.padding(16.dp),
-                verticalAlignment = Alignment.CenterVertically
+@Composable
+fun RankingTabContent(
+    uiState: RankingUiState,
+    onRetry: () -> Unit
+) {
+    when (uiState) {
+        is RankingUiState.Loading -> {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
             ) {
-                Icon(
-                    imageVector = Icons.Default.MilitaryTech,
-                    contentDescription = "Liga Atleta",
-                    tint = MaterialTheme.colorScheme.onTertiaryContainer,
-                    modifier = Modifier.size(40.dp)
-                )
-                Spacer(modifier = Modifier.width(12.dp))
-                Column {
-                    Text(
-                        text = "Liga Ouro • Grupo 4",
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onTertiaryContainer
-                    )
-                    Text(
-                        text = "Termina em: 3 dias e 04h",
-                        fontSize = 12.sp,
-                        color = MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.8f)
-                    )
+                CircularProgressIndicator()
+            }
+        }
+        is RankingUiState.Error -> {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                Text(text = uiState.message, color = MaterialTheme.colorScheme.error)
+                Spacer(modifier = Modifier.height(16.dp))
+                Button(onClick = onRetry) {
+                    Icon(imageVector = Icons.Default.Refresh, contentDescription = null)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Tentar Novamente")
                 }
             }
         }
+        is RankingUiState.Success -> {
+            val scrollState = rememberScrollState()
 
-        Spacer(modifier = Modifier.height(24.dp))
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(MaterialTheme.colorScheme.background)
+                    .padding(16.dp)
+                    .verticalScroll(scrollState),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                // ─── CABEÇALHO DA LIGA
+                LeagueHeaderCard(leagueInfo = uiState.leagueInfo)
 
-        // ─── 3. O PÓDIO (ROW com 3 COLUMNS alinhadas na base)
-        Text(
-            text = "Líderes da Semana",
-            fontSize = 16.sp,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.fillMaxWidth(),
-            color = MaterialTheme.colorScheme.onBackground
-        )
+                Spacer(modifier = Modifier.height(24.dp))
 
-        Spacer(modifier = Modifier.height(16.dp))
+                // ─── O PÓDIO
+                Text(
+                    text = "Líderes da Semana",
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.fillMaxWidth(),
+                    color = MaterialTheme.colorScheme.onBackground
+                )
 
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 8.dp),
-            horizontalArrangement = Arrangement.SpaceEvenly,
-            verticalAlignment = Alignment.Bottom // Garante que as colunas apoiam-se na mesma linha
-        ) {
-            // 2º LUGAR
-            PodiumItem(name = "Carlos M.", xp = "2.450 XP", rank = "2", height = 110, color = Color(0xFFC0C0C0))
+                Spacer(modifier = Modifier.height(16.dp))
 
-            // 1º LUGAR (Mais alto e em destaque)
-            PodiumItem(name = "Ana Silva", xp = "3.120 XP", rank = "1", height = 140, color = Color(0xFFFFD700))
+                val first = uiState.topThree.find { it.rank == 1 }
+                val second = uiState.topThree.find { it.rank == 2 }
+                val third = uiState.topThree.find { it.rank == 3 }
 
-            // 3º LUGAR
-            PodiumItem(name = "Pedro R.", xp = "2.100 XP", rank = "3", height = 95, color = Color(0xFFCD7F32))
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 8.dp),
+                    horizontalArrangement = Arrangement.SpaceEvenly,
+                    verticalAlignment = Alignment.Bottom
+                ) {
+                    second?.let {
+                        PodiumItem(name = it.name, xp = "${it.xp} XP", rank = "2", height = 110, color = Color(0xFFC0C0C0))
+                    }
+                    first?.let {
+                        PodiumItem(name = it.name, xp = "${it.xp} XP", rank = "1", height = 140, color = Color(0xFFFFD700))
+                    }
+                    third?.let {
+                        PodiumItem(name = it.name, xp = "${it.xp} XP", rank = "3", height = 95, color = Color(0xFFCD7F32))
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                // ─── SUA POSIÇÃO
+                uiState.currentUser?.let { user ->
+                    Text(
+                        text = "Sua Posição",
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Medium,
+                        modifier = Modifier.fillMaxWidth(),
+                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    LeaderboardRow(
+                        rank = user.rank.toString(),
+                        name = "${user.name} (Você)",
+                        xp = "${user.xp} XP",
+                        isCurrentUser = true
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+                }
+
+                // ─── OUTROS ATLETAS
+                if (uiState.otherAthletes.isNotEmpty()) {
+                    Text(
+                        text = "Demais Atletas",
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Medium,
+                        modifier = Modifier.fillMaxWidth(),
+                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    uiState.otherAthletes.forEach { athlete ->
+                        if (!athlete.isCurrentUser) {
+                            LeaderboardRow(
+                                rank = athlete.rank.toString(),
+                                name = athlete.name,
+                                xp = "${athlete.xp} XP"
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                        }
+                    }
+                }
+            }
         }
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        // ─── 4. RESTO DA LISTA (Múltiplas Rows consecutivas)
-        Text(
-            text = "Sua Posição",
-            fontSize = 14.sp,
-            fontWeight = FontWeight.Medium,
-            modifier = Modifier.fillMaxWidth(),
-            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
-        )
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        // Linha com a posição atual do utilizador conectado (Destaque)
-        LeaderboardRow(rank = "7", name = "Você (Ronaldo)", xp = "1.250 XP", isCurrentUser = true)
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Text(
-            text = "Próximos Atletas",
-            fontSize = 14.sp,
-            fontWeight = FontWeight.Medium,
-            modifier = Modifier.fillMaxWidth(),
-            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
-        )
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        // Outros competidores abaixo
-        LeaderboardRow(rank = "4", name = "Julia Lima", xp = "1.890 XP")
-        Spacer(modifier = Modifier.height(8.dp))
-        LeaderboardRow(rank = "5", name = "Marcos V.", xp = "1.640 XP")
-        Spacer(modifier = Modifier.height(8.dp))
-        LeaderboardRow(rank = "6", name = "Lucas Dias", xp = "1.450 XP")
     }
 }
 
-// ─── COMPONENTE AUXILIAR PARA CADA PILAR DO PÓDIO ─────────────────────────
+@Composable
+private fun LeagueHeaderCard(leagueInfo: LeagueInfo) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer),
+        shape = RoundedCornerShape(16.dp)
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = Icons.Default.MilitaryTech,
+                contentDescription = "Liga Atleta",
+                tint = MaterialTheme.colorScheme.onTertiaryContainer,
+                modifier = Modifier.size(40.dp)
+            )
+            Spacer(modifier = Modifier.width(12.dp))
+            Column {
+                Text(
+                    text = "${leagueInfo.title} • ${leagueInfo.group}",
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onTertiaryContainer
+                )
+                Text(
+                    text = "Termina em: ${leagueInfo.timeRemaining}",
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.8f)
+                )
+            }
+        }
+    }
+}
+
 @Composable
 private fun PodiumItem(name: String, xp: String, rank: String, height: Int, color: Color) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier.width(90.dp)
     ) {
-        // Avatar do topo
         Box(
             modifier = Modifier
                 .size(45.dp)
@@ -151,7 +220,6 @@ private fun PodiumItem(name: String, xp: String, rank: String, height: Int, colo
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        // Coluna/Bloco do pódio
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -170,13 +238,11 @@ private fun PodiumItem(name: String, xp: String, rank: String, height: Int, colo
 
         Spacer(modifier = Modifier.height(4.dp))
 
-        // Textos abaixo do pódio
         Text(text = name, fontSize = 12.sp, fontWeight = FontWeight.Bold, maxLines = 1)
         Text(text = xp, fontSize = 11.sp, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
     }
 }
 
-// ─── COMPONENTE AUXILIAR PARA CADA LINHA DO RANKING ──────────────────────
 @Composable
 private fun LeaderboardRow(rank: String, name: String, xp: String, isCurrentUser: Boolean = false) {
     Card(
@@ -193,7 +259,6 @@ private fun LeaderboardRow(rank: String, name: String, xp: String, isCurrentUser
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Posição Numérica
             Text(
                 text = rank,
                 fontSize = 16.sp,
@@ -202,7 +267,6 @@ private fun LeaderboardRow(rank: String, name: String, xp: String, isCurrentUser
                 color = if (isCurrentUser) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface
             )
 
-            // Pequena "div" (Box) redonda imitando a foto de perfil
             Box(
                 modifier = Modifier
                     .size(36.dp)
@@ -222,7 +286,6 @@ private fun LeaderboardRow(rank: String, name: String, xp: String, isCurrentUser
 
             Spacer(modifier = Modifier.width(16.dp))
 
-            // Nome do Atleta (ocupa o espaço restante disponível)
             Text(
                 text = name,
                 fontSize = 15.sp,
@@ -231,7 +294,6 @@ private fun LeaderboardRow(rank: String, name: String, xp: String, isCurrentUser
                 color = if (isCurrentUser) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface
             )
 
-            // Pontuação / XP
             Text(
                 text = xp,
                 fontSize = 14.sp,

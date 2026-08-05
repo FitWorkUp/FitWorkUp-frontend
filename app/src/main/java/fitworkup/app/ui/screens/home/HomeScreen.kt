@@ -2,17 +2,17 @@ package com.fitworkup.app.ui.screens.home
 
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.ShoppingCart
-import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import com.fitworkup.app.ui.screens.workout.components.WorkoutTabContent
-import com.fitworkup.app.ui.screens.ranking.RankingTabContent
-import com.fitworkup.app.ui.screens.store.StorePoints
 import com.fitworkup.app.ui.screens.profile.ProfileScreen
+import com.fitworkup.app.ui.screens.ranking.RankingTabRoute
+import com.fitworkup.app.ui.screens.store.StorePoints
+import com.fitworkup.app.ui.screens.workout.components.WorkoutTabContent
 
 @Composable
 fun HomeScreen(
@@ -54,7 +54,7 @@ fun HomeScreen(
         Surface(modifier = Modifier.padding(innerPadding)) {
             when (selectedTab) {
                 0 -> WorkoutTabContent(onStartWorkout = onStartWorkoutClick)
-                1 -> RankingTabContent()
+                1 -> RankingTabRoute()
                 2 -> StorePoints()
                 3 -> ProfileScreen(onSettingsClick = onSettingsClick)
             }

@@ -26,9 +26,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.fitworkup.app.ui.components.MiniMapa
 import com.fitworkup.app.ui.components.MonthlyProgressCard
 import com.fitworkup.app.ui.screens.dashboard.DashboardViewModel
+import com.fitworkup.app.ui.screens.home.components.MiniMapa
 import com.fitworkup.app.ui.screens.home.components.PerformanceCard
 import com.fitworkup.app.ui.screens.home.components.WorkoutGoalBottomSheet
 
@@ -249,7 +249,7 @@ fun WorkoutTabContent(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // 5. MINI MAPA DO ÚLTIMO PERCURSO
+            // 5. MINI MAPA DO ÚLTIMO PERCURSO (Sincronizado)
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(16.dp),
@@ -271,7 +271,10 @@ fun WorkoutTabContent(
                             .fillMaxWidth()
                             .height(150.dp)
                     ) {
-                        MiniMapa()
+                        // Passa os pontos de rota sincronizados vindos do DashboardViewModel
+                        MiniMapa(
+                            routePoints = dashboardState.lastActivityRoutePoints
+                        )
                     }
                 }
             }

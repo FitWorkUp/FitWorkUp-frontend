@@ -1,8 +1,11 @@
 package com.fitworkup.app.domain.model
 
 data class StoreItem(
-    val id: String,
+    val id: Long,
     val name: String,
-    val price: Int,
-    val iconEmoji: String
+    val description: String = "",
+    val priceInCoins: Int,
+    val iconEmoji: String,
+    val category: String = "AVATAR_BORDER",
+    val isPurchased: Boolean = false
 )

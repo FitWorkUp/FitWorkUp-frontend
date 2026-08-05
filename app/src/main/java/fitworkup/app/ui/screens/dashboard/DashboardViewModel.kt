@@ -1,85 +1,59 @@
 package com.fitworkup.app.ui.screens.dashboard
 
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
-import com.fitworkup.app.domain.repository.ActivityRepository
 import com.fitworkup.app.domain.repository.UserActivityItem
 import com.fitworkup.app.ui.components.DailyRunProgress
+import com.google.android.gms.maps.model.LatLng
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.flow.*
-import java.time.LocalDate
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import java.time.YearMonth
 import javax.inject.Inject
 
 data class DashboardUiState(
-    val selectedYearMonth: YearMonth = YearMonth.now(),
+    val isLoading: Boolean = false,
     val monthlyProgress: List<DailyRunProgress> = emptyList(),
+    val selectedYearMonth: YearMonth = YearMonth.now(),
     val focusedDay: Int? = null,
     val focusedDayActivities: List<UserActivityItem> = emptyList(),
-    val focusedDayTotalKm: Double = 0.0
+    val focusedDayTotalKm: Double = 0.0,
+    val lastActivityRoutePoints: List<LatLng> = emptyList()
 )
 
 @HiltViewModel
 class DashboardViewModel @Inject constructor(
-    private val activityRepository: ActivityRepository
+    // Injete o repositório de atividades aqui quando disponível
 ) : ViewModel() {
 
-    private val _selectedYearMonth = MutableStateFlow(YearMonth.now())
-    private val _focusedDay = MutableStateFlow<Int?>(null)
+    private val _uiState = MutableStateFlow(DashboardUiState())
+    val uiState: StateFlow<DashboardUiState> = _uiState.asStateFlow()
 
-    val uiState: StateFlow<DashboardUiState> = combine(
-        activityRepository.activitiesFlow,
-        _selectedYearMonth,
-        _focusedDay
-    ) { activities, yearMonth, focusedDay ->
-        val today = LocalDate.now()
-        val totalDays = yearMonth.lengthOfMonth()
+    init {
+        loadDashboardData()
+    }
 
-        // Mapeia o gráfico com o somatório de cada dia do mês
-        val progressList = (1..totalDays).map { day ->
-            val dayDate = yearMonth.atDay(day)
-            val isToday = dayDate.isEqual(today)
+    private fun loadDashboardData() {
+        // Coordenadas simuladas para o mini mapa do último percurso
+        val lastRoute = listOf(
+            LatLng(-12.9714, -38.5014),
+            LatLng(-12.9725, -38.5022),
+            LatLng(-12.9738, -38.5035)
+        )
 
-            val dayKm = activities
-                .filter { it.date.isEqual(dayDate) }
-                .sumOf { it.distanceKm }
-                .toFloat()
-
-            DailyRunProgress(
-                day = day,
-                distanceKm = dayKm,
-                isToday = isToday,
-                isFocused = (focusedDay == day)
+        _uiState.update { currentState ->
+            currentState.copy(
+                lastActivityRoutePoints = lastRoute
             )
         }
-
-        // Filtra os treinos específicos do dia que o usuário clicou no gráfico
-        val selectedDate = focusedDay?.let { yearMonth.atDay(it) }
-        val dayActivities = if (selectedDate != null) {
-            activities.filter { it.date.isEqual(selectedDate) }
-        } else emptyList()
-
-        val dayTotalKm = dayActivities.sumOf { it.distanceKm }
-
-        DashboardUiState(
-            selectedYearMonth = yearMonth,
-            monthlyProgress = progressList,
-            focusedDay = focusedDay,
-            focusedDayActivities = dayActivities,
-            focusedDayTotalKm = dayTotalKm
-        )
-    }.stateIn(
-        scope = viewModelScope,
-        started = SharingStarted.WhileSubscribed(5000),
-        initialValue = DashboardUiState()
-    )
+    }
 
     fun onMonthChanged(yearMonth: YearMonth) {
-        _selectedYearMonth.value = yearMonth
-        _focusedDay.value = null
+        _uiState.update { it.copy(selectedYearMonth = yearMonth) }
     }
 
     fun onDayFocused(day: Int?) {
-        _focusedDay.value = if (_focusedDay.value == day) null else day
+        _uiState.update { it.copy(focusedDay = day) }
     }
 }
