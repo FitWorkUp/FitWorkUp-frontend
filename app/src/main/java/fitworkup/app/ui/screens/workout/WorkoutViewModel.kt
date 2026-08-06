@@ -12,6 +12,7 @@ import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 @HiltViewModel
@@ -23,14 +24,13 @@ class WorkoutViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(WorkoutUiState())
     val uiState: StateFlow<WorkoutUiState> = _uiState.asStateFlow()
 
-    private var boundService: WorkoutSensorService? = null
     private var lastProcessedSteps: Int = 0
 
     fun onServiceConnected(service: WorkoutSensorService) {
-        boundService = service
         viewModelScope.launch {
-            service.workoutState.collect { sensorState ->
-                processSensorState(sensorState)
+            service.workoutState.collect { state ->
+                // 💡 Corrigido: Encaminha para o processador anti-fraude em vez de sobrescrever direto
+                processSensorState(state)
             }
         }
     }
@@ -60,8 +60,10 @@ class WorkoutViewModel @Inject constructor(
                 totalSteps = newStepCount,
                 acceptedSteps = newAccepted,
                 heldSteps = newHeld,
-                distanceKm = distanceKm,
-                avgSpeedKmH = speedKmH,
+                totalDistanceKm = distanceKm.toFloat(),
+                averageSpeedKmH = speedKmH.toFloat(),
+                durationSeconds = sensorState.durationSeconds,
+                gpsAccuracyMeters = sensorState.gpsAccuracyMeters,
                 riskScore = currentState.riskScore + eval.riskDelta,
                 fraudReasons = updatedReasons,
                 currentLocation = sensorState.currentLocation,
@@ -71,8 +73,10 @@ class WorkoutViewModel @Inject constructor(
             _uiState.value = _uiState.value.copy(
                 isTracking = sensorState.isTracking,
                 totalSteps = newStepCount,
-                distanceKm = distanceKm,
-                avgSpeedKmH = speedKmH,
+                totalDistanceKm = distanceKm.toFloat(),
+                averageSpeedKmH = speedKmH.toFloat(),
+                durationSeconds = sensorState.durationSeconds,
+                gpsAccuracyMeters = sensorState.gpsAccuracyMeters,
                 currentLocation = sensorState.currentLocation,
                 pathPoints = sensorState.pathPoints
             )
@@ -89,9 +93,9 @@ class WorkoutViewModel @Inject constructor(
             try {
                 val request = ActivityRequest(
                     type = activityType,
-                    distanceKm = state.distanceKm,
+                    distanceKm = state.totalDistanceKm.toDouble(),
                     steps = state.totalSteps,
-                    avgSpeed = state.avgSpeedKmH,
+                    avgSpeed = state.averageSpeedKmH.toDouble(),
                     acceptedSteps = state.acceptedSteps,
                     heldSteps = state.heldSteps,
                     riskScore = state.riskScore,

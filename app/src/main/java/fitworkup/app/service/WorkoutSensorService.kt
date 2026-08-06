@@ -28,9 +28,15 @@ import com.google.android.gms.location.LocationRequest
 import com.google.android.gms.location.LocationResult
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 
 data class WorkoutState(
     val steps: Int = 0,
@@ -38,6 +44,8 @@ data class WorkoutState(
     val latitude: Double = 0.0,
     val longitude: Double = 0.0,
     val speedMps: Float = 0f,
+    val gpsAccuracyMeters: Float = 0f, // 💡 Adicionado para o status dinâmico do GPS
+    val durationSeconds: Long = 0L,   // 💡 Adicionado para o cronômetro do treino
     val isTracking: Boolean = false,
     val currentLocation: Location? = null,
     val pathPoints: List<Location> = emptyList()
@@ -59,6 +67,9 @@ class WorkoutSensorService : Service(), SensorEventListener {
     private var lastLocation: Location? = null
     private var totalDistanceMeters: Float = 0f
     private val pathPointsList = mutableListOf<Location>()
+
+    private val serviceScope = CoroutineScope(Dispatchers.Default)
+    private var timerJob: Job? = null
 
     inner class LocalBinder : Binder() {
         fun getService(): WorkoutSensorService = this@WorkoutSensorService
@@ -104,12 +115,15 @@ class WorkoutSensorService : Service(), SensorEventListener {
         totalDistanceMeters = 0f
         lastLocation = null
 
-        _workoutState.value = _workoutState.value.copy(
+        _workoutState.value = WorkoutState(
             isTracking = true,
             distanceMeters = 0f,
+            durationSeconds = 0L,
             currentLocation = null,
             pathPoints = emptyList()
         )
+
+        startTimer()
 
         val notification = buildNotification()
         val serviceType = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
@@ -134,7 +148,20 @@ class WorkoutSensorService : Service(), SensorEventListener {
         startLocationUpdates()
     }
 
+    private fun startTimer() {
+        timerJob?.cancel()
+        timerJob = serviceScope.launch {
+            while (isActive && _workoutState.value.isTracking) {
+                delay(1000L)
+                _workoutState.value = _workoutState.value.copy(
+                    durationSeconds = _workoutState.value.durationSeconds + 1
+                )
+            }
+        }
+    }
+
     private fun stopWorkout() {
+        timerJob?.cancel()
         _workoutState.value = _workoutState.value.copy(isTracking = false)
 
         stepCounterSensor?.let { sensor ->
@@ -184,7 +211,7 @@ class WorkoutSensorService : Service(), SensorEventListener {
             LOCATION_INTERVAL_MS
         ).apply {
             setMinUpdateIntervalMillis(LOCATION_FASTEST_INTERVAL_MS)
-            setMinUpdateDistanceMeters(1.0f) // Atualiza com deslocamentos a partir de 1 metro
+            setMinUpdateDistanceMeters(1.0f)
         }.build()
 
         fusedLocationClient.requestLocationUpdates(
@@ -206,8 +233,13 @@ class WorkoutSensorService : Service(), SensorEventListener {
 
         if (isMock) return
 
-        // Filtra leituras imprecisas do GPS (imprecisão > 20 metros)
-        if (newLocation.hasAccuracy() && newLocation.accuracy > 20f) return
+        val accuracy = if (newLocation.hasAccuracy()) newLocation.accuracy else 50f
+
+        // Ignora leituras do GPS caso a precisão seja pior que 25 metros
+        if (accuracy > 25f) {
+            _workoutState.value = _workoutState.value.copy(gpsAccuracyMeters = accuracy)
+            return
+        }
 
         lastLocation?.let { previous ->
             val distance = previous.distanceTo(newLocation)
@@ -224,6 +256,7 @@ class WorkoutSensorService : Service(), SensorEventListener {
             longitude = newLocation.longitude,
             distanceMeters = totalDistanceMeters,
             speedMps = newLocation.speed,
+            gpsAccuracyMeters = accuracy,
             currentLocation = newLocation,
             pathPoints = pathPointsList.toList()
         )
@@ -233,9 +266,12 @@ class WorkoutSensorService : Service(), SensorEventListener {
     private fun buildNotification(): Notification {
         val state = _workoutState.value
         val kmText = String.format("%.2f km", state.distanceMeters / 1000)
+        val minutes = state.durationSeconds / 60
+        val seconds = state.durationSeconds % 60
+        val timeText = String.format("%02d:%02d", minutes, seconds)
 
         return NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("FitWorkUp - Treino em Andamento")
+            .setContentTitle("FitWorkUp - Treino ($timeText)")
             .setContentText("Passos: ${state.steps} | Distância: $kmText")
             .setSmallIcon(android.R.drawable.ic_dialog_info)
             .setOngoing(true)
@@ -267,7 +303,7 @@ class WorkoutSensorService : Service(), SensorEventListener {
         private const val CHANNEL_ID = "workout_sensor_channel"
         private const val NOTIFICATION_ID = 1001
 
-        private const val LOCATION_INTERVAL_MS = 2000L // Atualização a cada 2s para maior fidelidade no mapa
+        private const val LOCATION_INTERVAL_MS = 2000L
         private const val LOCATION_FASTEST_INTERVAL_MS = 1000L
     }
 }

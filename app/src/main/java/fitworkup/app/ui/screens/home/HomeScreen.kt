@@ -9,6 +9,8 @@ import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.fitworkup.app.ui.screens.profile.ProfileScreen
 import com.fitworkup.app.ui.screens.ranking.RankingTabRoute
 import com.fitworkup.app.ui.screens.store.StorePoints
@@ -17,9 +19,18 @@ import com.fitworkup.app.ui.screens.workout.components.WorkoutTabContent
 @Composable
 fun HomeScreen(
     onStartWorkoutClick: () -> Unit,
-    onSettingsClick: () -> Unit
+    onSettingsClick: () -> Unit,
+    viewModel: HomeViewModel = hiltViewModel()
 ) {
+    val homeUiState by viewModel.uiState.collectAsStateWithLifecycle()
     var selectedTab by remember { mutableIntStateOf(0) }
+
+    // Atualiza os dados diários sempre que a tela Home for reaberta
+    LaunchedEffect(selectedTab) {
+        if (selectedTab == 0) {
+            viewModel.loadTodaySummary()
+        }
+    }
 
     Scaffold(
         bottomBar = {
@@ -53,7 +64,10 @@ fun HomeScreen(
     ) { innerPadding ->
         Surface(modifier = Modifier.padding(innerPadding)) {
             when (selectedTab) {
-                0 -> WorkoutTabContent(onStartWorkout = onStartWorkoutClick)
+                0 -> WorkoutTabContent(
+                    homeUiState = homeUiState, // Passa o estado real com passos, distância e calorias acumuladas no dia
+                    onStartWorkout = onStartWorkoutClick
+                )
                 1 -> RankingTabRoute()
                 2 -> StorePoints()
                 3 -> ProfileScreen(onSettingsClick = onSettingsClick)
