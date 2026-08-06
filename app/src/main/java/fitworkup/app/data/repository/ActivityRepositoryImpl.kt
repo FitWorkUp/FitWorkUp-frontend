@@ -1,5 +1,6 @@
 package com.fitworkup.app.data.repository
 
+import android.util.Log
 import com.fitworkup.app.data.remote.api.ActivityApiService
 import com.fitworkup.app.data.remote.dto.ActivityRequest
 import com.fitworkup.app.data.remote.dto.ActivityResponse
@@ -22,7 +23,9 @@ class ActivityRepositoryImpl @Inject constructor(
 
     override suspend fun registerActivity(request: ActivityRequest): Result<ActivityResponse> {
         return try {
+            Log.d("ActivityRepository", "Enviando requisição de treino: $request")
             val response = apiService.registerActivity(request)
+
             if (response.isSuccessful && response.body() != null) {
                 val apiBody = response.body()!!
 
@@ -35,13 +38,17 @@ class ActivityRepositoryImpl @Inject constructor(
                 )
 
                 _activitiesFlow.value = _activitiesFlow.value + newItem
+                Log.d("ActivityRepository", "Treino salvo com sucesso: ${apiBody.id}")
                 Result.success(apiBody)
             } else {
-                val errorMsg = response.errorBody()?.string() ?: "Erro no servidor (${response.code()})"
-                Result.failure(Exception(errorMsg))
+                val statusCode = response.code()
+                val errorBody = response.errorBody()?.string() ?: "Sem corpo de erro"
+                Log.e("ActivityRepository", "Erro HTTP $statusCode: $errorBody")
+                Result.failure(Exception("Erro $statusCode no servidor: $errorBody"))
             }
         } catch (e: Exception) {
-            Result.failure(Exception("Falha de conexão: ${e.localizedMessage}"))
+            Log.e("ActivityRepository", "Exceção ao registrar atividade", e)
+            Result.failure(Exception("Falha na chamada: ${e.localizedMessage ?: e.javaClass.simpleName}"))
         }
     }
 

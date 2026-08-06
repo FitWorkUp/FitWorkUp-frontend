@@ -2,8 +2,8 @@ package com.fitworkup.app.ui.screens.ranking.components
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.fitworkup.app.data.repository.RankingRepository
 import com.fitworkup.app.domain.model.RankingUiState
+import com.fitworkup.app.domain.repository.RankingRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow

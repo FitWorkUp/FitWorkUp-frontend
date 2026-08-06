@@ -1,7 +1,7 @@
 package com.fitworkup.app.ui.screens.dashboard
 
 import androidx.lifecycle.ViewModel
-import com.fitworkup.app.domain.repository.UserActivityItem
+import com.fitworkup.app.domain.model.UserActivityItem
 import com.fitworkup.app.ui.components.DailyRunProgress
 import com.google.android.gms.maps.model.LatLng
 import dagger.hilt.android.lifecycle.HiltViewModel

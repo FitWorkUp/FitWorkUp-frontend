@@ -10,10 +10,10 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.DirectionsRun
 import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
-import androidx.compose.material.icons.automirrored.filled.DirectionsRun
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -23,7 +23,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.fitworkup.app.domain.repository.UserActivityItem
+import com.fitworkup.app.domain.model.UserActivityItem
 import java.time.Instant
 import java.time.LocalDate
 import java.time.YearMonth
@@ -114,7 +114,7 @@ fun MonthlyProgressCard(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // RESUMO DAS MÉTRICAS MENSARIA
+            // RESUMO DAS MÉTRICAS MENSAL
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceAround
@@ -218,7 +218,7 @@ fun MonthlyProgressCard(
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                         modifier = Modifier.padding(top = 8.dp)
                     ) {
-                        dayActivities.forEachIndexed { index, activity ->
+                        for ((index, activity) in dayActivities.withIndex()) {
                             ElevatedCard(
                                 modifier = Modifier.fillMaxWidth(),
                                 colors = CardDefaults.elevatedCardColors(
