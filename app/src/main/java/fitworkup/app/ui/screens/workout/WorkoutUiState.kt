@@ -2,6 +2,10 @@ package com.fitworkup.app.ui.screens.workout
 
 import android.location.Location
 
+/**
+ * Estado da UI para a tela de treino.
+ * Mantém getters de compatibilidade para evitar quebras em telas que consomem nomes legados.
+ */
 data class WorkoutUiState(
     val isTracking: Boolean = false,
     val totalDistanceKm: Float = 0f,
@@ -19,8 +23,11 @@ data class WorkoutUiState(
     val submissionSuccess: Boolean? = null,
     val errorMessage: String? = null
 ) {
-    // Alias para compatibilidade com componentes que consomem stepCount ou distanceKm
+    // --- ALIASES DE COMPATIBILIDADE ---
+    // Evitam a quebra de compilação em componentes e telas secundárias que utilizavam as nomenclaturas anteriores
     val stepCount: Int get() = totalSteps
     val distanceKm: Double get() = totalDistanceKm.toDouble()
     val avgSpeedKmH: Double get() = averageSpeedKmH.toDouble()
+    val isSuccess: Boolean get() = submissionSuccess == true
+    val hasError: Boolean get() = errorMessage != null
 }

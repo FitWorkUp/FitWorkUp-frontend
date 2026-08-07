@@ -43,7 +43,7 @@ fun WorkoutMetricsSection(
         uiState.gpsAccuracyMeters <= 0f -> "Buscando Satélites..." to Color(0xFFFFB300)
         uiState.gpsAccuracyMeters <= 10f -> "Sinal Forte (Verificado)" to Color(0xFF4CAF50)
         uiState.gpsAccuracyMeters <= 25f -> "Sinal Moderado" to Color(0xFFFF9800)
-        else -> "Sinal Fraco (Buscando Precision)" to Color(0xFFE53935)
+        else -> "Sinal Fraco (Buscando precisão)" to Color(0xFFE53935)
     }
 
     val animatedGpsColor by animateColorAsState(targetValue = gpsColor, label = "GpsColor")

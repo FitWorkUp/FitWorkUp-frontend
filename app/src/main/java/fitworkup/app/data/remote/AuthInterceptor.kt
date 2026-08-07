@@ -1,4 +1,4 @@
-package com.fitworkup.app.data.remote.interceptors
+package com.fitworkup.app.data.remote
 
 import okhttp3.Interceptor
 import okhttp3.Response

@@ -1,6 +1,7 @@
 package com.fitworkup.app.di
 
-import com.fitworkup.app.data.remote.api.ActivityApiService
+import com.fitworkup.app.data.remote.AuthInterceptor
+import com.fitworkup.app.data.remote.api.FitWorkUpApi
 import com.fitworkup.app.data.remote.api.UserApiService
 import dagger.Module
 import dagger.Provides
@@ -10,27 +11,29 @@ import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
-import java.util.concurrent.TimeUnit
 import javax.inject.Singleton
 
 @Module
 @InstallIn(SingletonComponent::class)
 object NetworkModule {
 
-    private const val BASE_URL = "http://192.168.1.10:8080/"
+    @Provides
+    @Singleton
+    fun provideLoggingInterceptor(): HttpLoggingInterceptor {
+        return HttpLoggingInterceptor().apply {
+            level = HttpLoggingInterceptor.Level.BODY
+        }
+    }
 
     @Provides
     @Singleton
-    fun provideOkHttpClient(): OkHttpClient {
-        val loggingInterceptor = HttpLoggingInterceptor().apply {
-            level = HttpLoggingInterceptor.Level.BODY
-        }
-
+    fun provideOkHttpClient(
+        authInterceptor: AuthInterceptor,
+        loggingInterceptor: HttpLoggingInterceptor
+    ): OkHttpClient {
         return OkHttpClient.Builder()
+            .addInterceptor(authInterceptor)
             .addInterceptor(loggingInterceptor)
-            .connectTimeout(15, TimeUnit.SECONDS)
-            .readTimeout(15, TimeUnit.SECONDS)
-            .writeTimeout(15, TimeUnit.SECONDS)
             .build()
     }
 
@@ -38,7 +41,7 @@ object NetworkModule {
     @Singleton
     fun provideRetrofit(okHttpClient: OkHttpClient): Retrofit {
         return Retrofit.Builder()
-            .baseUrl(BASE_URL)
+            .baseUrl("http://10.0.2.2:8083/")
             .client(okHttpClient)
             .addConverterFactory(GsonConverterFactory.create())
             .build()
@@ -46,10 +49,11 @@ object NetworkModule {
 
     @Provides
     @Singleton
-    fun provideActivityApiService(retrofit: Retrofit): ActivityApiService {
-        return retrofit.create(ActivityApiService::class.java)
+    fun provideFitWorkUpApi(retrofit: Retrofit): FitWorkUpApi {
+        return retrofit.create(FitWorkUpApi::class.java)
     }
 
+    // MÉTODO ADICIONADO PARA RESOLVER O ERRO DO UserApiService:
     @Provides
     @Singleton
     fun provideUserApiService(retrofit: Retrofit): UserApiService {

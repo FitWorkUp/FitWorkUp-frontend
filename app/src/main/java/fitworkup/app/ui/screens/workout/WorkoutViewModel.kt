@@ -7,6 +7,7 @@ import com.fitworkup.app.domain.repository.ActivityRepository
 import com.fitworkup.app.domain.security.StepAntiFraudEvaluator
 import com.fitworkup.app.service.WorkoutSensorService
 import com.fitworkup.app.service.WorkoutState
+import com.fitworkup.app.util.GpsLocationFilter
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -25,28 +26,47 @@ class WorkoutViewModel @Inject constructor(
     val uiState: StateFlow<WorkoutUiState> = _uiState.asStateFlow()
 
     private var lastProcessedSteps: Int = 0
+    private val gpsFilter = GpsLocationFilter(maxAllowedAccuracyMeters = 15.0f)
 
     fun onServiceConnected(service: WorkoutSensorService) {
         viewModelScope.launch {
             service.workoutState.collect { state ->
-                // 💡 Corrigido: Encaminha para o processador anti-fraude em vez de sobrescrever direto
                 processSensorState(state)
             }
         }
     }
 
     private fun processSensorState(sensorState: WorkoutState) {
-        val distanceKm = (sensorState.distanceMeters / 1000.0)
+        val rawDistanceKm = (sensorState.distanceMeters / 1000.0)
         val speedKmH = (sensorState.speedMps * 3.6)
 
         val newStepCount = sensorState.steps
         val stepDelta = newStepCount - lastProcessedSteps
+        val isWalking = stepDelta > 0 || newStepCount > 0
+
+        val currentState = _uiState.value
+
+        // Validação de segurança do sinal de GPS e movimento real
+        val isGpsValid = sensorState.gpsAccuracyMeters <= 15.0f
+        val shouldUpdatePathAndDistance = isWalking && isGpsValid
+
+        // Preserva o path e a distância anteriores se o usuário estiver parado (GPS Drift)
+        val safeDistanceKm = if (shouldUpdatePathAndDistance || currentState.totalDistanceKm == 0f) {
+            rawDistanceKm.toFloat()
+        } else {
+            currentState.totalDistanceKm
+        }
+
+        val safePathPoints = if (shouldUpdatePathAndDistance || currentState.pathPoints.isEmpty()) {
+            sensorState.pathPoints
+        } else {
+            currentState.pathPoints
+        }
 
         if (stepDelta > 0) {
             val eval = antiFraudEvaluator.evaluateStepDelta(newStepCount, speedKmH)
             lastProcessedSteps = newStepCount
 
-            val currentState = _uiState.value
             val newAccepted = if (eval.isAccepted) currentState.acceptedSteps + stepDelta else currentState.acceptedSteps
             val newHeld = if (!eval.isAccepted) currentState.heldSteps + stepDelta else currentState.heldSteps
 
@@ -55,31 +75,35 @@ class WorkoutViewModel @Inject constructor(
                 updatedReasons.add(eval.reason)
             }
 
-            _uiState.value = currentState.copy(
-                isTracking = sensorState.isTracking,
-                totalSteps = newStepCount,
-                acceptedSteps = newAccepted,
-                heldSteps = newHeld,
-                totalDistanceKm = distanceKm.toFloat(),
-                averageSpeedKmH = speedKmH.toFloat(),
-                durationSeconds = sensorState.durationSeconds,
-                gpsAccuracyMeters = sensorState.gpsAccuracyMeters,
-                riskScore = currentState.riskScore + eval.riskDelta,
-                fraudReasons = updatedReasons,
-                currentLocation = sensorState.currentLocation,
-                pathPoints = sensorState.pathPoints
-            )
+            _uiState.update {
+                it.copy(
+                    isTracking = sensorState.isTracking,
+                    totalSteps = newStepCount,
+                    acceptedSteps = newAccepted,
+                    heldSteps = newHeld,
+                    totalDistanceKm = safeDistanceKm,
+                    averageSpeedKmH = speedKmH.toFloat(),
+                    durationSeconds = sensorState.durationSeconds,
+                    gpsAccuracyMeters = sensorState.gpsAccuracyMeters,
+                    riskScore = currentState.riskScore + eval.riskDelta,
+                    fraudReasons = updatedReasons,
+                    currentLocation = sensorState.currentLocation,
+                    pathPoints = safePathPoints
+                )
+            }
         } else {
-            _uiState.value = _uiState.value.copy(
-                isTracking = sensorState.isTracking,
-                totalSteps = newStepCount,
-                totalDistanceKm = distanceKm.toFloat(),
-                averageSpeedKmH = speedKmH.toFloat(),
-                durationSeconds = sensorState.durationSeconds,
-                gpsAccuracyMeters = sensorState.gpsAccuracyMeters,
-                currentLocation = sensorState.currentLocation,
-                pathPoints = sensorState.pathPoints
-            )
+            _uiState.update {
+                it.copy(
+                    isTracking = sensorState.isTracking,
+                    totalSteps = newStepCount,
+                    totalDistanceKm = safeDistanceKm,
+                    averageSpeedKmH = speedKmH.toFloat(),
+                    durationSeconds = sensorState.durationSeconds,
+                    gpsAccuracyMeters = sensorState.gpsAccuracyMeters,
+                    currentLocation = sensorState.currentLocation,
+                    pathPoints = safePathPoints
+                )
+            }
         }
     }
 
@@ -87,15 +111,19 @@ class WorkoutViewModel @Inject constructor(
         val state = _uiState.value
         if (state.isSubmitting) return
 
-        _uiState.value = state.copy(isSubmitting = true, errorMessage = null)
+        _uiState.update { it.copy(isSubmitting = true, errorMessage = null) }
 
         viewModelScope.launch {
             try {
+                // Validação e Sanitização de Doutrina LGPD / Zero Trust antes do envio ao backend
+                val sanitizedDistance = if (state.totalDistanceKm.isNaN() || state.totalDistanceKm < 0) 0.0 else state.totalDistanceKm.toDouble()
+                val sanitizedSpeed = if (state.averageSpeedKmH.isNaN() || state.averageSpeedKmH < 0) 0.0 else state.averageSpeedKmH.toDouble()
+
                 val request = ActivityRequest(
                     type = activityType,
-                    distanceKm = state.totalDistanceKm.toDouble(),
+                    distanceKm = sanitizedDistance,
                     steps = state.totalSteps,
-                    avgSpeed = state.averageSpeedKmH.toDouble(),
+                    avgSpeed = sanitizedSpeed,
                     acceptedSteps = state.acceptedSteps,
                     heldSteps = state.heldSteps,
                     riskScore = state.riskScore,
@@ -104,23 +132,29 @@ class WorkoutViewModel @Inject constructor(
 
                 val result = activityRepository.registerActivity(request)
                 if (result.isSuccess) {
-                    _uiState.value = _uiState.value.copy(
-                        isSubmitting = false,
-                        submissionSuccess = true
-                    )
+                    _uiState.update {
+                        it.copy(
+                            isSubmitting = false,
+                            submissionSuccess = true
+                        )
+                    }
                 } else {
-                    _uiState.value = _uiState.value.copy(
-                        isSubmitting = false,
-                        submissionSuccess = false,
-                        errorMessage = result.exceptionOrNull()?.message ?: "Falha ao registrar o treino."
-                    )
+                    _uiState.update {
+                        it.copy(
+                            isSubmitting = false,
+                            submissionSuccess = false,
+                            errorMessage = result.exceptionOrNull()?.message ?: "Falha ao registrar o treino."
+                        )
+                    }
                 }
             } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(
-                    isSubmitting = false,
-                    submissionSuccess = false,
-                    errorMessage = "Erro imprevisível: ${e.localizedMessage}"
-                )
+                _uiState.update {
+                    it.copy(
+                        isSubmitting = false,
+                        submissionSuccess = false,
+                        errorMessage = "Erro de conexão/processamento: ${e.localizedMessage}"
+                    )
+                }
             }
         }
     }
