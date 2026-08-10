@@ -1,4 +1,4 @@
-package fitworkup.app.ui.screens.login
+package com.fitworkup.app.ui.screens.login
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -27,11 +27,15 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 @Composable
 fun LoginScreen(
-    onNavigateToHome: () -> Unit
+    onNavigateToHome: () -> Unit,
+    viewModel: LoginViewModel = hiltViewModel()
 ) {
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val focusManager = LocalFocusManager.current
 
     var isLoginMode by remember { mutableStateOf(true) }
@@ -42,7 +46,6 @@ fun LoginScreen(
     var email by remember { mutableStateOf("") }
     var senha by remember { mutableStateOf("") }
     var senhaVisivel by remember { mutableStateOf(false) }
-    var isLoading by remember { mutableStateOf(false) }
 
     var erroLoginIdentifier by remember { mutableStateOf(false) }
     var erroNome by remember { mutableStateOf(false) }
@@ -58,6 +61,15 @@ fun LoginScreen(
         erroEmail = false
         erroSenha = false
         mensagemErro = null
+        viewModel.clearError()
+    }
+
+    LaunchedEffect(uiState.isAuthenticated) {
+        if (uiState.isAuthenticated) onNavigateToHome()
+    }
+
+    LaunchedEffect(uiState.errorMessage) {
+        uiState.errorMessage?.let { mensagemErro = it }
     }
 
     fun validar(): Boolean {
@@ -96,8 +108,11 @@ fun LoginScreen(
     fun onConfirmar() {
         focusManager.clearFocus()
         if (!validar()) return
-        isLoading = true
-        onNavigateToHome()
+        if (isLoginMode) {
+            viewModel.login(loginIdentifier, senha)
+        } else {
+            viewModel.register(username, email, senha)
+        }
     }
 
     Column(
@@ -231,14 +246,14 @@ fun LoginScreen(
 
         Button(
             onClick = { onConfirmar() },
-            enabled = !isLoading,
+            enabled = !uiState.isLoading,
             modifier = Modifier
                 .fillMaxWidth()
                 .height(52.dp),
             shape = RoundedCornerShape(14.dp),
             colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
         ) {
-            if (isLoading) {
+            if (uiState.isLoading) {
                 CircularProgressIndicator(modifier = Modifier.size(24.dp), color = MaterialTheme.colorScheme.onPrimary, strokeWidth = 2.dp)
             } else {
                 Text(text = if (isLoginMode) "Entrar" else "Criar Conta", fontSize = 16.sp, fontWeight = FontWeight.SemiBold)

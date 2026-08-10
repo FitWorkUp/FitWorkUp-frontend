@@ -4,10 +4,10 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.fitworkup.app.data.remote.dto.ActivityRequest
 import com.fitworkup.app.domain.repository.ActivityRepository
+import com.fitworkup.app.domain.model.RoutePoint
 import com.fitworkup.app.domain.security.StepAntiFraudEvaluator
 import com.fitworkup.app.service.WorkoutSensorService
 import com.fitworkup.app.service.WorkoutState
-import com.fitworkup.app.util.GpsLocationFilter
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -26,8 +26,6 @@ class WorkoutViewModel @Inject constructor(
     val uiState: StateFlow<WorkoutUiState> = _uiState.asStateFlow()
 
     private var lastProcessedSteps: Int = 0
-    private val gpsFilter = GpsLocationFilter(maxAllowedAccuracyMeters = 15.0f)
-
     fun onServiceConnected(service: WorkoutSensorService) {
         viewModelScope.launch {
             service.workoutState.collect { state ->
@@ -127,7 +125,15 @@ class WorkoutViewModel @Inject constructor(
                     acceptedSteps = state.acceptedSteps,
                     heldSteps = state.heldSteps,
                     riskScore = state.riskScore,
-                    fraudReasons = state.fraudReasons
+                    fraudReasons = state.fraudReasons,
+                    routePoints = state.pathPoints.map { location ->
+                        RoutePoint(
+                            latitude = location.latitude,
+                            longitude = location.longitude,
+                            timestamp = location.time,
+                            accuracyMeters = location.accuracy
+                        )
+                    }
                 )
 
                 val result = activityRepository.registerActivity(request)

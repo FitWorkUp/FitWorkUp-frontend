@@ -7,7 +7,7 @@ import com.fitworkup.app.data.local.entity.ActivityEntity
 
 @Database(
     entities = [ActivityEntity::class],
-    version = 1,
+    version = 2,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {

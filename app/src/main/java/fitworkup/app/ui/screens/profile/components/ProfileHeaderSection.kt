@@ -19,6 +19,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.fitworkup.app.domain.model.UserProfile
 
 @Composable
 fun ProfileTopBar(onSettingsClick: () -> Unit) {
@@ -44,13 +45,20 @@ fun ProfileTopBar(onSettingsClick: () -> Unit) {
 }
 
 @Composable
-fun ProfileHeaderInfo() {
+fun ProfileHeaderInfo(profile: UserProfile?) {
+    val avatarBorderColor = when {
+        profile?.avatarBorder?.contains("Rubi", ignoreCase = true) == true -> Color(0xFFD32F2F)
+        profile?.avatarBorder?.contains("Esmeralda", ignoreCase = true) == true -> Color(0xFF2E7D32)
+        profile?.avatarBorder?.contains("Lendária", ignoreCase = true) == true -> Color(0xFFFFB300)
+        else -> MaterialTheme.colorScheme.primary
+    }
+
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Box(contentAlignment = Alignment.Center) {
             Box(
                 modifier = Modifier
                     .size(100.dp)
-                    .border(3.dp, MaterialTheme.colorScheme.primary, CircleShape)
+                    .border(4.dp, avatarBorderColor, CircleShape)
                     .padding(6.dp)
             ) {
                 Surface(
@@ -73,26 +81,29 @@ fun ProfileHeaderInfo() {
                     .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(8.dp))
                     .padding(horizontal = 6.dp, vertical = 2.dp)
             ) {
-                Text("LVL 12", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                Text("LVL ${profile?.level ?: 1}", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.White)
             }
         }
 
         Spacer(modifier = Modifier.height(12.dp))
-        Text(text = "Atleta_Fit", fontSize = 20.sp, fontWeight = FontWeight.Bold)
-        Text(text = "Título: Mestre do Suor 🏃‍♂️", fontSize = 13.sp, color = MaterialTheme.colorScheme.primary)
+        Text(text = profile?.name ?: "Carregando...", fontSize = 20.sp, fontWeight = FontWeight.Bold)
+        Text(text = "Título: ${profile?.title ?: "NOVATO"}", fontSize = 13.sp, color = MaterialTheme.colorScheme.primary)
     }
 }
 
 @Composable
-fun ProfileXpProgressCard() {
+fun ProfileXpProgressCard(profile: UserProfile?) {
+    val currentXp = profile?.currentXp ?: 0
+    val maxXp = (profile?.maxXp ?: 1).coerceAtLeast(1)
+    val progressValue = (currentXp.toFloat() / maxXp.toFloat()).coerceIn(0f, 1f)
     Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp)) {
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             Text("Progresso de XP", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Text("1.450 / 2.000 XP", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+            Text("$currentXp / $maxXp XP", fontSize = 12.sp, fontWeight = FontWeight.Bold)
         }
         Spacer(modifier = Modifier.height(6.dp))
         LinearProgressIndicator(
-            progress = { 0.72f },
+            progress = { progressValue },
             modifier = Modifier.fillMaxWidth().height(8.dp).clip(RoundedCornerShape(4.dp)),
             color = MaterialTheme.colorScheme.primary,
             trackColor = MaterialTheme.colorScheme.surfaceVariant

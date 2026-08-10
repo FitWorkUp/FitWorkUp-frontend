@@ -5,6 +5,7 @@ import com.google.android.gms.maps.model.LatLng
 
 data class HomeUiState(
     val isLoading: Boolean = false,
+    val userName: String = "Atleta",
     val stepsToday: Int = 0,
     val distanceKmToday: Double = 0.0,
     val caloriesToday: Int = 0,

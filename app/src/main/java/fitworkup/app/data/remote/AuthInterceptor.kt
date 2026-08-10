@@ -1,28 +1,19 @@
 package com.fitworkup.app.data.remote
 
+import com.fitworkup.app.data.session.TokenStore
+import javax.inject.Inject
 import okhttp3.Interceptor
 import okhttp3.Response
-import javax.inject.Inject
 
 class AuthInterceptor @Inject constructor(
-    // Injetar TokenManager/DataStore contendo o JWT salvo no login
+    private val tokenStore: TokenStore
 ) : Interceptor {
 
     override fun intercept(chain: Interceptor.Chain): Response {
         val requestBuilder = chain.request().newBuilder()
-
-        // Exemplo: resgatar JWT do armazenamento criptografado
-        val jwtToken = getSavedJwtToken()
-
-        if (!jwtToken.isNullOrEmpty()) {
-            requestBuilder.addHeader("Authorization", "Bearer $jwtToken")
-        }
-
+        tokenStore.getTokenBlocking()
+            ?.takeIf { it.isNotBlank() }
+            ?.let { requestBuilder.header("Authorization", "Bearer $it") }
         return chain.proceed(requestBuilder.build())
-    }
-
-    private fun getSavedJwtToken(): String? {
-        // Retorna o token persistido após login no AuthController
-        return null
     }
 }

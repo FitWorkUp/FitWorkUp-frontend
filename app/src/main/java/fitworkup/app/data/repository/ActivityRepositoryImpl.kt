@@ -7,7 +7,10 @@ import com.fitworkup.app.data.remote.dto.ActivityRequest
 import com.fitworkup.app.data.remote.dto.DailySummaryResponse
 import com.fitworkup.app.domain.model.UserActivityItem
 import com.fitworkup.app.domain.repository.ActivityRepository
+import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
 import java.time.Instant
+import java.time.LocalDate
 import java.time.ZoneId
 import javax.inject.Inject
 import kotlinx.coroutines.CoroutineScope
@@ -21,6 +24,8 @@ class ActivityRepositoryImpl @Inject constructor(
     private val api: FitWorkUpApi,
     private val activityDao: ActivityDao
 ) : ActivityRepository {
+
+    private val gson = Gson()
 
     // Escopo assíncrono para tarefas de segundo plano que não travam a UI
     private val backgroundScope = CoroutineScope(Dispatchers.IO)
@@ -36,6 +41,7 @@ class ActivityRepositoryImpl @Inject constructor(
                 acceptedSteps = request.acceptedSteps,
                 heldSteps = request.heldSteps,
                 riskScore = request.riskScore,
+                routeJson = gson.toJson(request.routePoints),
                 timestamp = System.currentTimeMillis(),
                 isSynced = false
             )
@@ -76,10 +82,18 @@ class ActivityRepositoryImpl @Inject constructor(
     }
 
     private suspend fun getTodaySummaryFromLocal(): Result<DailySummaryResponse> = withContext(Dispatchers.IO) {
-        val activities = activityDao.getAllActivities()
+        val today = LocalDate.now()
+        val activities = activityDao.getAllActivities().filter { entity ->
+            Instant.ofEpochMilli(entity.timestamp)
+                .atZone(ZoneId.systemDefault())
+                .toLocalDate() == today
+        }
         val totalSteps = activities.sumOf { it.steps }
         val totalDistance = activities.sumOf { it.distanceKm }
-        val estimatedCalories = (totalSteps * 0.04).toInt()
+        val estimatedCalories = maxOf(
+            (totalDistance * 60.0).toInt(),
+            (totalSteps * 0.04).toInt()
+        )
 
         Result.success(
             DailySummaryResponse(
@@ -103,7 +117,11 @@ class ActivityRepositoryImpl @Inject constructor(
                     steps = entity.steps,
                     date = Instant.ofEpochMilli(entity.timestamp)
                         .atZone(ZoneId.systemDefault())
-                        .toLocalDate()
+                        .toLocalDate(),
+                    routePoints = runCatching {
+                        val routeType = object : TypeToken<List<com.fitworkup.app.domain.model.RoutePoint>>() {}.type
+                        gson.fromJson<List<com.fitworkup.app.domain.model.RoutePoint>>(entity.routeJson, routeType)
+                    }.getOrDefault(emptyList())
                 )
             }
         }

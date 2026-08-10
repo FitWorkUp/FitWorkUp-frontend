@@ -1,16 +1,21 @@
 package com.fitworkup.app.ui.screens.dashboard
 
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import com.fitworkup.app.domain.model.UserActivityItem
+import com.fitworkup.app.domain.repository.ActivityRepository
 import com.fitworkup.app.ui.components.DailyRunProgress
 import com.google.android.gms.maps.model.LatLng
 import dagger.hilt.android.lifecycle.HiltViewModel
+import java.time.LocalDate
+import java.time.YearMonth
+import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.update
-import java.time.YearMonth
-import javax.inject.Inject
+import kotlinx.coroutines.launch
 
 data class DashboardUiState(
     val isLoading: Boolean = false,
@@ -24,36 +29,76 @@ data class DashboardUiState(
 
 @HiltViewModel
 class DashboardViewModel @Inject constructor(
-    // Injete o repositório de atividades aqui quando disponível
+    private val activityRepository: ActivityRepository
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow(DashboardUiState())
+    private val _uiState = MutableStateFlow(DashboardUiState(isLoading = true))
     val uiState: StateFlow<DashboardUiState> = _uiState.asStateFlow()
 
+    private var localActivities: List<UserActivityItem> = emptyList()
+
     init {
-        loadDashboardData()
+        observeLocalActivities()
     }
 
-    private fun loadDashboardData() {
-        // Coordenadas simuladas para o mini mapa do último percurso
-        val lastRoute = listOf(
-            LatLng(-12.9714, -38.5014),
-            LatLng(-12.9725, -38.5022),
-            LatLng(-12.9738, -38.5035)
-        )
+    private fun observeLocalActivities() {
+        viewModelScope.launch {
+            activityRepository.getLocalActivitiesFlow().collect { activities ->
+                localActivities = activities
+                rebuildDashboard()
+            }
+        }
+    }
 
-        _uiState.update { currentState ->
-            currentState.copy(
-                lastActivityRoutePoints = lastRoute
+    private fun rebuildDashboard(
+        selectedMonth: YearMonth = _uiState.value.selectedYearMonth,
+        focusedDay: Int? = _uiState.value.focusedDay
+    ) {
+        val activitiesInMonth = localActivities.filter {
+            YearMonth.from(it.date) == selectedMonth
+        }
+        val distanceByDay = activitiesInMonth
+            .groupBy { it.date.dayOfMonth }
+            .mapValues { (_, activities) -> activities.sumOf { it.distanceKm }.toFloat() }
+
+        val today = LocalDate.now()
+        val progress = (1..selectedMonth.lengthOfMonth()).map { day ->
+            DailyRunProgress(
+                day = day,
+                distanceKm = distanceByDay[day] ?: 0f,
+                isToday = selectedMonth == YearMonth.from(today) && day == today.dayOfMonth,
+                isFocused = focusedDay == day
+            )
+        }
+
+        val focusedActivities = focusedDay?.let { day ->
+            activitiesInMonth.filter { it.date.dayOfMonth == day }
+        }.orEmpty()
+
+        val latestRoute = localActivities
+            .firstOrNull { it.routePoints.isNotEmpty() }
+            ?.routePoints
+            ?.map { LatLng(it.latitude, it.longitude) }
+            .orEmpty()
+
+        _uiState.update {
+            it.copy(
+                isLoading = false,
+                monthlyProgress = progress,
+                selectedYearMonth = selectedMonth,
+                focusedDay = focusedDay,
+                focusedDayActivities = focusedActivities,
+                focusedDayTotalKm = focusedActivities.sumOf { activity -> activity.distanceKm },
+                lastActivityRoutePoints = latestRoute
             )
         }
     }
 
     fun onMonthChanged(yearMonth: YearMonth) {
-        _uiState.update { it.copy(selectedYearMonth = yearMonth) }
+        rebuildDashboard(selectedMonth = yearMonth, focusedDay = null)
     }
 
     fun onDayFocused(day: Int?) {
-        _uiState.update { it.copy(focusedDay = day) }
+        rebuildDashboard(focusedDay = day)
     }
 }

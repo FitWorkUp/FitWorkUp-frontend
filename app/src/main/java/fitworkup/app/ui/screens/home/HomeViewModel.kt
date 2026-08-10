@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.fitworkup.app.data.remote.dto.DailySummaryResponse
 import com.fitworkup.app.domain.repository.ActivityRepository
+import com.fitworkup.app.data.repository.ProfileRepository
 import com.fitworkup.app.util.toLatLngList
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.time.LocalDate
@@ -13,12 +14,14 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 @HiltViewModel
 class HomeViewModel @Inject constructor(
-    private val activityRepository: ActivityRepository
+    private val activityRepository: ActivityRepository,
+    private val profileRepository: ProfileRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<HomeUiState>(HomeUiState())
@@ -26,7 +29,16 @@ class HomeViewModel @Inject constructor(
 
     init {
         observeLocalActivities()
+        loadUserProfile()
         loadTodaySummary()
+    }
+
+    private fun loadUserProfile() {
+        viewModelScope.launch {
+            profileRepository.getUserProfile().first().onSuccess { profile ->
+                _uiState.update { it.copy(userName = profile.name) }
+            }
+        }
     }
 
     private fun observeLocalActivities() {
@@ -37,7 +49,10 @@ class HomeViewModel @Inject constructor(
 
                 val calculatedSteps = todayActivities.sumOf { it.steps }
                 val calculatedDistance = todayActivities.sumOf { it.distanceKm }
-                val calculatedCalories = (calculatedDistance * 60.0).toInt() // Estimativa baseada na distância percorrida
+                val calculatedCalories = maxOf(
+                    (calculatedDistance * 60.0).toInt(),
+                    (calculatedSteps * 0.04).toInt()
+                )
 
                 _uiState.update { currentState ->
                     currentState.copy(

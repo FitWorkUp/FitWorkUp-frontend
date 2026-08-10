@@ -30,6 +30,9 @@ data class ActivityEntity(
     @ColumnInfo(name = "risk_score")
     val riskScore: Int,
 
+    @ColumnInfo(name = "route_json")
+    val routeJson: String = "[]",
+
     @ColumnInfo(name = "timestamp")
     val timestamp: Long = System.currentTimeMillis(),
 

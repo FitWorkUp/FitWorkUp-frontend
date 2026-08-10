@@ -12,4 +12,6 @@ interface ProfileRepository {
 
     suspend fun removeFriend(friendId: String): Result<Unit>
     suspend fun sendFriendRequest(userTagOrEmail: String): Result<Unit>
+    suspend fun acceptFriendRequest(friendshipId: String): Result<Unit>
+    suspend fun rejectFriendRequest(friendshipId: String): Result<Unit>
 }

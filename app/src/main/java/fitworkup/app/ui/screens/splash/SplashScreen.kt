@@ -18,6 +18,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.fitworkup.app.R
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.delay
 
 private const val SPLASH_DELAY_MS = 2000L
@@ -33,8 +35,10 @@ private val MOTIVATIONAL_QUOTES = listOf(
 
 @Composable
 fun SplashScreen(
-    onNavigate: (route: String) -> Unit
+    onNavigate: (route: String) -> Unit,
+    viewModel: SplashViewModel = hiltViewModel()
 ) {
+    val destination by viewModel.destination.collectAsStateWithLifecycle()
     val alpha = remember { Animatable(0f) }
     val scale = remember { Animatable(0.8f) }
     val randomQuote = remember { MOTIVATIONAL_QUOTES.random() }
@@ -45,9 +49,12 @@ fun SplashScreen(
         scale.animateTo(1f, animationSpec = tween(500))
 
         delay(SPLASH_DELAY_MS)
+    }
 
-        // TODO: Mudar para checagem real no DataStore (Ex: se logado vai direto pra HOME)
-        onNavigate("onboarding")
+    LaunchedEffect(destination) {
+        val route = destination ?: return@LaunchedEffect
+        delay(SPLASH_DELAY_MS)
+        onNavigate(route)
     }
 
     Box(

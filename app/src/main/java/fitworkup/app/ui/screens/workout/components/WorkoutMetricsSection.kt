@@ -5,7 +5,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.DirectionsRun
+import androidx.compose.material.icons.automirrored.filled.DirectionsRun
 import androidx.compose.material.icons.filled.LocalFireDepartment
 import androidx.compose.material.icons.filled.MonetizationOn
 import androidx.compose.material.icons.filled.Speed
@@ -87,7 +87,7 @@ fun WorkoutMetricsSection(
             MetricCard(
                 title = "Distância",
                 value = String.format(Locale.getDefault(), "%.2f km", uiState.totalDistanceKm),
-                icon = Icons.Default.DirectionsRun,
+                icon = Icons.AutoMirrored.Filled.DirectionsRun,
                 iconColor = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.weight(1f)
             )
@@ -114,7 +114,7 @@ fun WorkoutMetricsSection(
             MetricCard(
                 title = "Passos Validados",
                 value = "${uiState.stepCount}",
-                icon = Icons.Default.DirectionsRun,
+                icon = Icons.AutoMirrored.Filled.DirectionsRun,
                 iconColor = Color(0xFF4CAF50),
                 modifier = Modifier.weight(1f)
             )
@@ -141,10 +141,8 @@ fun WorkoutMetricsSection(
                     label = "XP Estimado",
                     value = "+$estimatedXp XP"
                 )
-                Divider(
-                    modifier = Modifier
-                        .height(32.dp)
-                        .width(1.dp),
+                VerticalDivider(
+                    modifier = Modifier.height(32.dp),
                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.2f)
                 )
                 RewardItem(

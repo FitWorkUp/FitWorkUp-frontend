@@ -1,8 +1,12 @@
 package com.fitworkup.app.di
 
 import com.fitworkup.app.data.remote.AuthInterceptor
+import com.fitworkup.app.BuildConfig
+import com.fitworkup.app.data.remote.api.AuthApiService
+import com.fitworkup.app.data.remote.api.FriendshipApiService
 import com.fitworkup.app.data.remote.api.FitWorkUpApi
 import com.fitworkup.app.data.remote.api.UserApiService
+import com.fitworkup.app.data.remote.api.StoreApiService
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -21,7 +25,8 @@ object NetworkModule {
     @Singleton
     fun provideLoggingInterceptor(): HttpLoggingInterceptor {
         return HttpLoggingInterceptor().apply {
-            level = HttpLoggingInterceptor.Level.BODY
+            redactHeader("Authorization")
+            level = if (BuildConfig.DEBUG) HttpLoggingInterceptor.Level.BODY else HttpLoggingInterceptor.Level.NONE
         }
     }
 
@@ -41,7 +46,7 @@ object NetworkModule {
     @Singleton
     fun provideRetrofit(okHttpClient: OkHttpClient): Retrofit {
         return Retrofit.Builder()
-            .baseUrl("http://10.0.2.2:8083/")
+            .baseUrl(BuildConfig.API_BASE_URL)
             .client(okHttpClient)
             .addConverterFactory(GsonConverterFactory.create())
             .build()
@@ -53,10 +58,28 @@ object NetworkModule {
         return retrofit.create(FitWorkUpApi::class.java)
     }
 
+    @Provides
+    @Singleton
+    fun provideAuthApiService(retrofit: Retrofit): AuthApiService {
+        return retrofit.create(AuthApiService::class.java)
+    }
+
     // MÉTODO ADICIONADO PARA RESOLVER O ERRO DO UserApiService:
     @Provides
     @Singleton
     fun provideUserApiService(retrofit: Retrofit): UserApiService {
         return retrofit.create(UserApiService::class.java)
+    }
+
+    @Provides
+    @Singleton
+    fun provideFriendshipApiService(retrofit: Retrofit): FriendshipApiService {
+        return retrofit.create(FriendshipApiService::class.java)
+    }
+
+    @Provides
+    @Singleton
+    fun provideStoreApiService(retrofit: Retrofit): StoreApiService {
+        return retrofit.create(StoreApiService::class.java)
     }
 }

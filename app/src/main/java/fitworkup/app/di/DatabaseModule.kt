@@ -2,6 +2,8 @@ package com.fitworkup.app.di
 
 import android.content.Context
 import androidx.room.Room
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
 import com.fitworkup.app.data.local.dao.ActivityDao
 import com.fitworkup.app.data.local.database.AppDatabase
 import dagger.Module
@@ -15,6 +17,14 @@ import javax.inject.Singleton
 @InstallIn(SingletonComponent::class)
 object DatabaseModule {
 
+    private val MIGRATION_1_2 = object : Migration(1, 2) {
+        override fun migrate(database: SupportSQLiteDatabase) {
+            database.execSQL(
+                "ALTER TABLE activities ADD COLUMN route_json TEXT NOT NULL DEFAULT '[]'"
+            )
+        }
+    }
+
     @Provides
     @Singleton
     fun provideAppDatabase(
@@ -25,7 +35,7 @@ object DatabaseModule {
             AppDatabase::class.java,
             "fitworkup_db"
         )
-            .fallbackToDestructiveMigration() // Em ambiente de desenvolvimento/teste
+            .addMigrations(MIGRATION_1_2)
             .build()
     }
 

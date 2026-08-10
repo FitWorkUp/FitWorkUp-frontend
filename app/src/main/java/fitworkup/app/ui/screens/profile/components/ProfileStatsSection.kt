@@ -13,12 +13,15 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.fitworkup.app.domain.model.UserProfile
+import java.util.Locale
 
 @Composable
-fun ProfileStatsRow() {
+fun ProfileStatsRow(profile: UserProfile?) {
     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        ProfileStatCard(Icons.Default.Timeline, "124 km", "Total Rodado", Modifier.weight(1f))
-        ProfileStatCard(Icons.Default.LocalFireDepartment, "7 Dias", "Sequência", Modifier.weight(1f))
+        val totalKm = String.format(Locale.getDefault(), "%.1f km", profile?.totalKm ?: 0.0)
+        ProfileStatCard(Icons.Default.Timeline, totalKm, "Total Rodado", Modifier.weight(1f))
+        ProfileStatCard(Icons.Default.LocalFireDepartment, "${profile?.streakDays ?: 0} Dias", "Sequência", Modifier.weight(1f))
     }
 }
 

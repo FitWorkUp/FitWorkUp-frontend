@@ -1,78 +1,91 @@
 package com.fitworkup.app.data.repository
 
+import com.fitworkup.app.data.remote.api.FriendshipApiService
 import com.fitworkup.app.data.remote.api.UserApiService
+import com.fitworkup.app.data.remote.dto.FriendshipRequestDto
 import com.fitworkup.app.domain.model.BadgeItem
 import com.fitworkup.app.domain.model.FriendItem
 import com.fitworkup.app.domain.model.UserProfile
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.flow
+import java.util.Locale
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
 
 @Singleton
 class ProfileRepositoryImpl @Inject constructor(
-    private val apiService: UserApiService
+    private val userApiService: UserApiService,
+    private val friendshipApiService: FriendshipApiService
 ) : ProfileRepository {
 
-    // Substituir "me" pelo ID do usuário logado mantido na sessão local
-    private val currentUserId = "me"
-
     override fun getUserProfile(): Flow<Result<UserProfile>> = flow {
-        try {
-            val response = apiService.getUserProfile(currentUserId)
-            if (response.isSuccessful && response.body() != null) {
-                emit(Result.success(response.body()!!.toDomain()))
-            } else {
-                emit(Result.failure(Exception("Erro HTTP: ${response.code()}")))
-            }
-        } catch (e: Exception) {
-            emit(Result.failure(e))
-        }
+        emit(runCatching {
+            val response = userApiService.getMyProfile()
+            response.body()?.takeIf { response.isSuccessful }?.toDomain()
+                ?: error("Falha ao carregar o perfil (${response.code()}).")
+        })
     }
 
     override fun getFriends(): Flow<Result<List<FriendItem>>> = flow {
-        try {
-            val response = apiService.getFriends(currentUserId)
-            if (response.isSuccessful && response.body() != null) {
-                emit(Result.success(response.body()!!))
-            } else {
-                emit(Result.failure(Exception("Erro ao buscar amigos.")))
+        emit(runCatching {
+            val currentUser = userApiService.getMyProfile().body()
+                ?: error("Sessão de usuário indisponível.")
+            val response = friendshipApiService.getFriends()
+            val friendships = response.body()?.takeIf { response.isSuccessful }
+                ?: error("Falha ao carregar amigos (${response.code()}).")
+
+            friendships.map { friendship ->
+                val otherUsername = if (friendship.userId == currentUser.id) {
+                    friendship.friendUsername
+                } else {
+                    friendship.username
+                }
+                FriendItem(
+                    id = friendship.id.toString(),
+                    name = otherUsername,
+                    tag = otherUsername,
+                    level = 1
+                )
             }
-        } catch (e: Exception) {
-            emit(Result.failure(e))
-        }
+        })
     }
 
     override fun getBadges(): Flow<Result<List<BadgeItem>>> = flow {
-        try {
-            val response = apiService.getBadges(currentUserId)
-            if (response.isSuccessful && response.body() != null) {
-                emit(Result.success(response.body()!!))
+        emit(runCatching {
+            val response = userApiService.getBadges()
+            if (response.isSuccessful) {
+                response.body().orEmpty().map { it.toDomain() }
             } else {
-                emit(Result.failure(Exception("Erro ao buscar conquistas.")))
+                emptyList()
             }
-        } catch (e: Exception) {
-            emit(Result.failure(e))
-        }
+        })
     }
 
-    override suspend fun removeFriend(friendId: String): Result<Unit> {
-        return try {
-            val response = apiService.removeFriend(currentUserId, friendId)
-            if (response.isSuccessful) Result.success(Unit)
-            else Result.failure(Exception("Erro ao remover amigo no servidor."))
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
+    override suspend fun removeFriend(friendId: String): Result<Unit> = runCatching {
+        val response = friendshipApiService.remove(friendId.toLong())
+        if (!response.isSuccessful) error("Erro ao remover amigo (${response.code()}).")
     }
 
-    override suspend fun sendFriendRequest(userTagOrEmail: String): Result<Unit> {
-        return try {
-            val response = apiService.sendFriendRequest(userTagOrEmail)
-            if (response.isSuccessful) Result.success(Unit)
-            else Result.failure(Exception("Usuário não encontrado."))
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
+    override suspend fun sendFriendRequest(userTagOrEmail: String): Result<Unit> = runCatching {
+        val query = userTagOrEmail.trim().removePrefix("@")
+        val searchResponse = userApiService.searchUsers(query)
+        val candidates = searchResponse.body()?.takeIf { searchResponse.isSuccessful }
+            ?: error("Não foi possível pesquisar usuários.")
+        val target = candidates.firstOrNull {
+            it.username.lowercase(Locale.ROOT) == query.lowercase(Locale.ROOT)
+        } ?: candidates.firstOrNull() ?: error("Usuário não encontrado.")
+
+        val response = friendshipApiService.sendRequest(FriendshipRequestDto(target.id))
+        if (!response.isSuccessful) error("Não foi possível enviar a solicitação (${response.code()}).")
+    }
+
+    override suspend fun acceptFriendRequest(friendshipId: String): Result<Unit> = runCatching {
+        val response = friendshipApiService.accept(friendshipId.toLong())
+        if (!response.isSuccessful) error("Não foi possível aceitar a solicitação.")
+    }
+
+    override suspend fun rejectFriendRequest(friendshipId: String): Result<Unit> = runCatching {
+        val response = friendshipApiService.reject(friendshipId.toLong())
+        if (!response.isSuccessful) error("Não foi possível rejeitar a solicitação.")
     }
 }

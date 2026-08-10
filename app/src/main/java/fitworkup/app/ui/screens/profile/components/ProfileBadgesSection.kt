@@ -75,6 +75,15 @@ private fun BadgeCard(badge: BadgeItem) {
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 2
             )
+            if (badge.xpReward > 0 || badge.fitcoinsReward > 0) {
+                Spacer(modifier = Modifier.height(6.dp))
+                Text(
+                    text = "+${badge.xpReward} XP • +${badge.fitcoinsReward} FC",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
         }
     }
 }

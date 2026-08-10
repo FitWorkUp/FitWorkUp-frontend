@@ -26,6 +26,10 @@ fun ProfileScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
+    LaunchedEffect(Unit) {
+        viewModel.loadProfileData()
+    }
+
     var showAddFriendSheet by remember { mutableStateOf(false) }
     var showFriendsListSheet by remember { mutableStateOf(false) }
     val scrollState = rememberScrollState()
@@ -42,10 +46,10 @@ fun ProfileScreen(
             ProfileTopBar(onSettingsClick)
             Spacer(modifier = Modifier.height(16.dp))
 
-            ProfileHeaderInfo()
+            ProfileHeaderInfo(profile = uiState.profile)
             Spacer(modifier = Modifier.height(20.dp))
 
-            ProfileXpProgressCard()
+            ProfileXpProgressCard(profile = uiState.profile)
             Spacer(modifier = Modifier.height(16.dp))
 
             ProfileFriendsHubCard(
@@ -56,7 +60,7 @@ fun ProfileScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            ProfileStatsRow()
+            ProfileStatsRow(profile = uiState.profile)
             Spacer(modifier = Modifier.height(20.dp))
 
             ProfileBadgesSection(badges = uiState.badges)

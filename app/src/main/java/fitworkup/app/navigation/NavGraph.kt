@@ -9,7 +9,7 @@ import com.fitworkup.app.ui.screens.home.HomeScreen
 import com.fitworkup.app.ui.screens.login.OnboardingScreen
 import com.fitworkup.app.ui.screens.splash.SplashScreen
 import com.fitworkup.app.ui.screens.workout.WorkoutScreen
-import fitworkup.app.ui.screens.login.LoginScreen
+import com.fitworkup.app.ui.screens.login.LoginScreen
 
 object Routes {
     const val SPLASH      = "splash"
@@ -60,7 +60,14 @@ fun NavGraph() {
         }
 
         composable(Routes.CONFIG) {
-            ConfigScreen(onBackClick = { navController.popBackStack() })
+            ConfigScreen(
+                onBackClick = { navController.popBackStack() },
+                onLoggedOut = {
+                    navController.navigate(Routes.LOGIN) {
+                        popUpTo(Routes.HOME) { inclusive = true }
+                    }
+                }
+            )
         }
 
         // Rota do Treino com Anti-Fraude Integrado

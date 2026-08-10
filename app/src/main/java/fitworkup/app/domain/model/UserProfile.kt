@@ -10,7 +10,10 @@ data class UserProfile(
     val maxXp: Int,
     val totalKm: Double,
     val streakDays: Int,
-    val fitCoins: Int
+    val fitCoins: Int,
+    val email: String = "",
+    val weightKg: Double? = null,
+    val avatarBorder: String = "DEFAULT"
 )
 
 data class FriendItem(
@@ -26,5 +29,8 @@ data class BadgeItem(
     val name: String,
     val description: String,
     val unlocked: Boolean,
-    val unlockedAt: String? = null
+    val unlockedAt: String? = null,
+    val iconName: String? = null,
+    val xpReward: Int = 0,
+    val fitcoinsReward: Int = 0
 )

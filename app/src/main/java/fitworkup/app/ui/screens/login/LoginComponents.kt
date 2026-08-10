@@ -1,4 +1,4 @@
-package fitworkup.app.ui.screens.login
+package com.fitworkup.app.ui.screens.login
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable

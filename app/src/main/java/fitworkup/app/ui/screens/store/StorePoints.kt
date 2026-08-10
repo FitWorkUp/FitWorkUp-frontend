@@ -1,172 +1,444 @@
 package com.fitworkup.app.ui.screens.store
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.FlashOn
 import androidx.compose.material.icons.filled.MonetizationOn
-import androidx.compose.material.icons.filled.Star
-import androidx.compose.material3.*
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.fitworkup.app.domain.model.StoreItem
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 
 @Composable
-fun StorePoints() {
-    // Estado de rolagem para a loja não cortar em telas menores
-    val scrollState = rememberScrollState()
+fun StorePoints(viewModel: StoreViewModel = hiltViewModel()) {
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val snackbarHostState = remember { SnackbarHostState() }
+    var selectedItem by remember { mutableStateOf<StoreItem?>(null) }
 
-    // ─── 1. CONTAINER PAI PRINCIPAL (Organiza tudo verticalmente)
-    Column(
+    LaunchedEffect(Unit) { viewModel.refresh() }
+    LaunchedEffect(uiState.notification) {
+        uiState.notification?.let {
+            snackbarHostState.showSnackbar(it)
+            viewModel.clearNotification()
+        }
+    }
+
+    Box(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
-            .padding(16.dp)
-            .verticalScroll(scrollState),
-        horizontalAlignment = Alignment.CenterHorizontally
     ) {
+        when {
+            uiState.isLoading -> CircularProgressIndicator(Modifier.align(Alignment.Center))
 
-        // ─── 2. BOX DE SALDO (Topo da tela)
-        // Usamos Box aqui porque ele permite alinhar o ícone de fundo de forma livre
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(100.dp)
-                .clip(RoundedCornerShape(24.dp))
-                .background(MaterialTheme.colorScheme.primaryContainer)
-                .padding(20.dp),
-            contentAlignment = Alignment.CenterStart
-        ) {
-            Column {
-                Text(
-                    text = "Seu Saldo Atual",
-                    fontSize = 14.sp,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
-                )
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.padding(top = 4.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.MonetizationOn,
-                        contentDescription = "Moedas",
-                        tint = Color(0xFFFFD700), // Cor Dourada
-                        modifier = Modifier.size(28.dp)
-                    )
-                    Spacer(modifier = Modifier.width(6.dp))
+            uiState.errorMessage != null && uiState.items.isEmpty() -> ErrorContent(
+                message = uiState.errorMessage.orEmpty(),
+                onRetry = viewModel::refresh,
+                modifier = Modifier.align(Alignment.Center)
+            )
+
+            else -> LazyVerticalGrid(
+                columns = GridCells.Fixed(2),
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(16.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                item(span = { GridItemSpan(maxLineSpan) }) {
+                    BalanceCard(uiState.balance)
+                }
+                item(span = { GridItemSpan(maxLineSpan) }) {
                     Text(
-                        text = "1,450 FC",
-                        fontSize = 26.sp,
+                        text = "Recompensas disponíveis",
+                        fontSize = 18.sp,
                         fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                        modifier = Modifier.padding(top = 10.dp, bottom = 2.dp)
+                    )
+                }
+                if (uiState.items.isEmpty()) {
+                    item(span = { GridItemSpan(maxLineSpan) }) {
+                        Text(
+                            text = "Nenhum item disponível no momento.",
+                            modifier = Modifier.padding(vertical = 24.dp),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+                items(uiState.items, key = StoreItem::id) { item ->
+                    StoreItemCard(
+                        item = item,
+                        isProcessing = uiState.processingItemId == item.id,
+                        onPurchase = { selectedItem = item },
+                        onEquip = { viewModel.equip(item) }
                     )
                 }
             }
         }
 
-        Spacer(modifier = Modifier.height(24.dp))
-
-        // Título da seção de itens
-        Text(
-            text = "Recompensas Disponíveis",
-            fontSize = 18.sp,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
-            color = MaterialTheme.colorScheme.onBackground
+        SnackbarHost(
+            hostState = snackbarHostState,
+            modifier = Modifier.align(Alignment.BottomCenter).padding(16.dp)
         )
+    }
 
-        // ─── 3. LISTA DE ITENS DA LOJA (Múltiplas Columns/Cards)
-
-        // ITEM 1: Multiplicador de XP
-        StoreItemRow(
-            title = "Multiplicador de XP (2h)",
-            description = "Dobre o XP ganho nas suas corridas pelas próximas duas horas.",
-            price = "300 FC",
-            icon = Icons.Default.FlashOn,
-            iconColor = Color(0xFFFF9800)
-        )
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        // ITEM 2: Emblema Lendário
-        StoreItemRow(
-            title = "Emblema 'Velocidade da Luz'",
-            description = "Exiba um fundo animado exclusivo no seu perfil e ranking semanal.",
-            price = "800 FC",
-            icon = Icons.Default.Star,
-            iconColor = Color(0xFF9C27B0)
+    selectedItem?.let { item ->
+        StorePurchaseDialog(
+            item = item,
+            balance = uiState.balance,
+            onDismiss = { selectedItem = null },
+            onConfirm = {
+                selectedItem = null
+                viewModel.purchase(item)
+            }
         )
     }
 }
 
-// ─── COMPONENTE AUXILIAR PARA CADA ITEM DA LOJA ──────────────────────────
 @Composable
-private fun StoreItemRow(
-    title: String,
-    description: String,
-    price: String,
-    annotation: String? = null,
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    iconColor: Color
-) {
-    // Usamos um Card (que por baixo é uma Column modificada) para agrupar as informações
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)),
-        shape = RoundedCornerShape(16.dp)
+private fun BalanceCard(balance: Int) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(24.dp))
+            .background(MaterialTheme.colorScheme.primaryContainer)
+            .padding(20.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Row(
-            modifier = Modifier.padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
+        Icon(
+            imageVector = Icons.Default.MonetizationOn,
+            contentDescription = null,
+            tint = Color(0xFFFFC107),
+            modifier = Modifier.size(34.dp)
+        )
+        Spacer(Modifier.width(10.dp))
+        Column {
+            Text(
+                text = "Seu saldo atual",
+                fontSize = 13.sp,
+                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+            )
+            Text(
+                text = "$balance FitCoins",
+                fontSize = 25.sp,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onPrimaryContainer
+            )
+        }
+    }
+}
+
+@Composable
+private fun StoreItemCard(
+    item: StoreItem,
+    isProcessing: Boolean,
+    onPurchase: () -> Unit,
+    onEquip: () -> Unit
+) {
+    val activeUntilLabel = item.activeUntil?.let(::formatActiveUntil)
+
+    Card(
+        modifier = Modifier.fillMaxWidth().height(250.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.42f)
+        ),
+        shape = RoundedCornerShape(18.dp)
+    ) {
+        Column(
+            modifier = Modifier.fillMaxSize().padding(14.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Box redondo para o ícone do produto
             Box(
                 modifier = Modifier
-                    .size(50.dp)
-                    .background(iconColor.copy(alpha = 0.15f), CircleShape),
+                    .size(54.dp)
+                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f), CircleShape),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(imageVector = icon, contentDescription = null, tint = iconColor, modifier = Modifier.size(26.dp))
+                Text(text = item.iconEmoji, fontSize = 27.sp)
             }
 
-            Spacer(modifier = Modifier.width(16.dp))
+            Spacer(Modifier.height(10.dp))
+            Text(
+                text = item.name,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.height(40.dp)
+            )
 
-            // Column interna para alinhar os textos à esquerda e o botão embaixo
-            Column(modifier = Modifier.weight(1f)) {
-                Text(text = title, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
-                Text(
-                    text = description,
-                    fontSize = 12.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
-                    modifier = Modifier.padding(top = 4.dp, bottom = 8.dp)
-                )
+            Box(
+                modifier = Modifier.fillMaxWidth().height(36.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                if (item.category.equals("BOOST", ignoreCase = true)) {
+                    Text(
+                    text = activeUntilLabel ?: "${item.multiplier?.toInt() ?: 2}x • ${item.durationMinutes ?: 0} min",
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = if (activeUntilLabel != null) Color(0xFF2E7D32) else MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(top = 8.dp)
+                    )
+                }
+            }
 
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+            Text(
+                text = "${item.priceInCoins} FitCoins",
+                fontSize = 16.sp,
+                fontWeight = FontWeight.ExtraBold,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(vertical = 6.dp)
+            )
+
+            when {
+                isProcessing -> CircularProgressIndicator(Modifier.size(30.dp), strokeWidth = 2.dp)
+                item.isEquipped -> StoreOutlinedButton("Em uso", false) {}
+                item.isPurchased && !item.repeatable -> StoreOutlinedButton("Equipar", true, onEquip)
+                else -> Button(
+                    onClick = onPurchase,
+                    modifier = Modifier.fillMaxWidth().height(44.dp),
+                    contentPadding = PaddingValues(horizontal = 8.dp)
                 ) {
-                    Text(text = price, fontSize = 15.sp, fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.primary)
-
-                    Button(
-                        onClick = { /* Lógica de compra */ },
-                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp),
-                        modifier = Modifier.height(32.dp),
-                        shape = RoundedCornerShape(8.dp)
-                    ) {
-                        Text("Resgatar", fontSize = 12.sp)
-                    }
+                    Text(
+                        text = if (activeUntilLabel != null) "Estender" else if (item.repeatable) "Ativar" else "Resgatar",
+                        fontSize = 12.sp
+                    )
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun StorePurchaseDialog(
+    item: StoreItem,
+    balance: Int,
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit
+) {
+    val isBoost = item.category.equals("BOOST", ignoreCase = true)
+    val hasEnoughBalance = balance >= item.priceInCoins
+    val missingCoins = (item.priceInCoins - balance).coerceAtLeast(0)
+    val activeUntilLabel = item.activeUntil?.let(::formatActiveUntil)
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        icon = {
+            Box(
+                modifier = Modifier
+                    .size(62.dp)
+                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f), CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(text = item.iconEmoji, fontSize = 31.sp)
+            }
+        },
+        title = {
+            Text(
+                text = item.name,
+                textAlign = TextAlign.Center,
+                fontWeight = FontWeight.Bold
+            )
+        },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text(
+                    text = item.description,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                if (isBoost) {
+                    PurchaseDetailRow(
+                        label = "Efeito",
+                        value = storeEffectLabel(item)
+                    )
+                    PurchaseDetailRow(
+                        label = "Multiplicador",
+                        value = multiplierLabel(item.multiplier)
+                    )
+                    PurchaseDetailRow(
+                        label = "Duração",
+                        value = "${item.durationMinutes ?: 0} minutos"
+                    )
+                    activeUntilLabel?.let { activeUntil ->
+                        Text(
+                            text = "$activeUntil. A nova compra acrescentará mais ${item.durationMinutes ?: 0} minutos.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Color(0xFF2E7D32)
+                        )
+                    }
+                }
+
+                HorizontalDivider()
+
+                PurchaseDetailRow(
+                    label = "Preço",
+                    value = "${item.priceInCoins} FitCoins",
+                    valueColor = MaterialTheme.colorScheme.primary
+                )
+                PurchaseDetailRow(
+                    label = "Seu saldo",
+                    value = "$balance FitCoins"
+                )
+
+                if (!hasEnoughBalance) {
+                    Text(
+                        text = "Faltam $missingCoins FitCoins para concluir esta compra.",
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                } else {
+                    Text(
+                        text = if (isBoost) {
+                            "O efeito será ativado imediatamente após a confirmação."
+                        } else {
+                            "O item ficará disponível para ser equipado no seu perfil."
+                        },
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = onConfirm,
+                enabled = hasEnoughBalance
+            ) {
+                Text(confirmPurchaseLabel(item))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancelar")
+            }
+        }
+    )
+}
+
+@Composable
+private fun PurchaseDetailRow(
+    label: String,
+    value: String,
+    valueColor: Color = MaterialTheme.colorScheme.onSurface
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Text(
+            text = value,
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.SemiBold,
+            color = valueColor,
+            textAlign = TextAlign.End
+        )
+    }
+}
+
+private fun storeEffectLabel(item: StoreItem): String = when (item.effectType?.uppercase()) {
+    "XP_MULTIPLIER" -> "Bônus de XP"
+    "FITCOINS_MULTIPLIER" -> "Bônus de FitCoins"
+    else -> "Bônus temporário"
+}
+
+private fun multiplierLabel(multiplier: Double?): String {
+    val safeMultiplier = multiplier ?: 1.0
+    return if (safeMultiplier % 1.0 == 0.0) {
+        "${safeMultiplier.toInt()}x"
+    } else {
+        "${safeMultiplier}x"
+    }
+}
+
+private fun confirmPurchaseLabel(item: StoreItem): String = when {
+    item.activeUntil != null -> "Estender por ${item.priceInCoins}"
+    item.repeatable -> "Ativar por ${item.priceInCoins}"
+    else -> "Resgatar por ${item.priceInCoins}"
+}
+
+@Composable
+private fun StoreOutlinedButton(text: String, enabled: Boolean, onClick: () -> Unit) {
+    OutlinedButton(
+        onClick = onClick,
+        enabled = enabled,
+        modifier = Modifier.fillMaxWidth().height(44.dp),
+        contentPadding = PaddingValues(horizontal = 8.dp)
+    ) {
+        Text(text, fontSize = 12.sp)
+    }
+}
+
+private fun formatActiveUntil(value: String): String = runCatching {
+    val formatter = DateTimeFormatter.ofPattern("HH:mm")
+    val localTime = Instant.parse(value).atZone(ZoneId.systemDefault()).format(formatter)
+    "Ativo até $localTime"
+}.getOrDefault("Bônus ativo")
+
+@Composable
+private fun ErrorContent(message: String, onRetry: () -> Unit, modifier: Modifier = Modifier) {
+    Column(
+        modifier = modifier.padding(24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(text = message, color = MaterialTheme.colorScheme.error, textAlign = TextAlign.Center)
+        Spacer(Modifier.height(12.dp))
+        Button(onClick = onRetry) { Text("Tentar novamente") }
     }
 }

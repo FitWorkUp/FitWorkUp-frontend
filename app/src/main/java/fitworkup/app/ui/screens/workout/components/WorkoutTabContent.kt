@@ -44,10 +44,10 @@ fun WorkoutTabContent(
     }
 
     WorkoutTabContent(
-        userName = "Atleta",
+        userName = homeUiState.userName,
         fitCoins = homeUiState.fitcoins,
         currentSteps = homeUiState.stepsToday,
-        dailyStepGoal = 10000,
+        dailyStepGoal = progressiveStepGoal(homeUiState.stepsToday),
         totalKmToday = homeUiState.distanceKmToday.toFloat(),
         caloriesBurnedToday = homeUiState.caloriesToday,
         routePoints = effectiveRoutePoints,
@@ -153,6 +153,13 @@ fun WorkoutTabContent(
                 )
 
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        text = stepGoalLabel(currentSteps),
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.DirectionsRun,
                         contentDescription = null,
@@ -296,4 +303,17 @@ private fun WorkoutPerformanceCard(
             )
         }
     }
+}
+
+private fun progressiveStepGoal(currentSteps: Int): Int = when {
+    currentSteps < 1_000 -> 1_000
+    currentSteps < 5_000 -> 5_000
+    else -> 10_000
+}
+
+private fun stepGoalLabel(currentSteps: Int): String = when {
+    currentSteps < 1_000 -> "META INICIAL"
+    currentSteps < 5_000 -> "PRÓXIMA META"
+    currentSteps < 10_000 -> "META FINAL"
+    else -> "META 10K CONCLUÍDA"
 }

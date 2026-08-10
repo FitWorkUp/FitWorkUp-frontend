@@ -15,6 +15,7 @@ import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material.icons.outlined.StarOutline
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -22,13 +23,22 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ConfigScreen(
-    onBackClick: () -> Unit
+    onBackClick: () -> Unit,
+    onLoggedOut: () -> Unit,
+    viewModel: ConfigViewModel = hiltViewModel()
 ) {
+    val loggedOut by viewModel.loggedOut.collectAsStateWithLifecycle()
     val scrollState = rememberScrollState()
+
+    androidx.compose.runtime.LaunchedEffect(loggedOut) {
+        if (loggedOut) onLoggedOut()
+    }
 
     Scaffold(
         topBar = {
@@ -96,6 +106,16 @@ fun ConfigScreen(
                 subtitle = "Português (BR)",
                 onClick = { /* TODO */ }
             )
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            OutlinedButton(
+                onClick = viewModel::logout,
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error)
+            ) {
+                Text("Sair da conta")
+            }
 
             Spacer(modifier = Modifier.height(24.dp))
 

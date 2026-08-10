@@ -1,5 +1,6 @@
 package com.fitworkup.app.data.remote.dto
 
+import com.fitworkup.app.domain.model.RoutePoint
 import com.google.gson.annotations.SerializedName
 
 data class ActivityRequest(
@@ -26,6 +27,9 @@ data class ActivityRequest(
 
     @SerializedName("fraudReasons")
     val fraudReasons: List<String>,
+
+    @SerializedName("routePoints")
+    val routePoints: List<RoutePoint> = emptyList(),
 
     @SerializedName("plannedExerciseSessionId")
     val plannedExerciseSessionId: String? = null,

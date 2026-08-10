@@ -4,28 +4,31 @@ import com.fitworkup.app.domain.model.UserProfile
 
 data class UserResponseDto(
     val id: Long,
-    val name: String,
-    val tag: String,
-    val title: String?,
+    val username: String,
+    val email: String,
+    val weightKg: Double?,
+    val xp: Int,
+    val nextLevelXp: Int,
     val level: Int,
-    val currentXp: Int,
-    val maxXp: Int,
-    val totalKm: Double,
-    val streakDays: Int,
-    val fitCoins: Int
+    val fitcoins: Int,
+    val streak: Int,
+    val totalDistanceKm: Double,
+    val avatarBorder: String,
+    val prestigeTitle: String
 ) {
-    fun toDomain(): UserProfile {
-        return UserProfile(
-            id = id.toString(),
-            name = name,
-            tag = tag,
-            title = title ?: "Atleta Fit",
-            level = level,
-            currentXp = currentXp,
-            maxXp = maxXp,
-            totalKm = totalKm,
-            streakDays = streakDays,
-            fitCoins = fitCoins
-        )
-    }
+    fun toDomain(): UserProfile = UserProfile(
+        id = id.toString(),
+        name = username,
+        tag = username,
+        title = prestigeTitle,
+        level = level,
+        currentXp = xp,
+        maxXp = nextLevelXp,
+        totalKm = totalDistanceKm,
+        streakDays = streak,
+        fitCoins = fitcoins,
+        email = email,
+        weightKg = weightKg,
+        avatarBorder = avatarBorder
+    )
 }

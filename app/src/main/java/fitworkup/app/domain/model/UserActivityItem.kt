@@ -7,5 +7,6 @@ data class UserActivityItem(
     val type: String,
     val distanceKm: Double,
     val steps: Int,
-    val date: LocalDate = LocalDate.now()
+    val date: LocalDate = LocalDate.now(),
+    val routePoints: List<RoutePoint> = emptyList()
 )

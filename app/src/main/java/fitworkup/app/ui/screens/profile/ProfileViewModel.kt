@@ -41,10 +41,6 @@ class ProfileViewModel @Inject constructor(
     private val _uiEvent = MutableSharedFlow<ProfileUiEvent>()
     val uiEvent: SharedFlow<ProfileUiEvent> = _uiEvent.asSharedFlow()
 
-    init {
-        loadProfileData()
-    }
-
     fun loadProfileData() {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }

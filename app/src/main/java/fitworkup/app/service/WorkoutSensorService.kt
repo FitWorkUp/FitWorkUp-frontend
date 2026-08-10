@@ -19,6 +19,7 @@ import android.os.Binder
 import android.os.Build
 import android.os.IBinder
 import android.os.Looper
+import android.os.SystemClock
 import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
@@ -67,6 +68,7 @@ class WorkoutSensorService : Service(), SensorEventListener {
     private var lastLocation: Location? = null
     private var totalDistanceMeters: Float = 0f
     private val pathPointsList = mutableListOf<Location>()
+    private var lastStepDetectedAtMs: Long = 0L
 
     private val serviceScope = CoroutineScope(Dispatchers.Default)
     private var timerJob: Job? = null
@@ -109,11 +111,15 @@ class WorkoutSensorService : Service(), SensorEventListener {
     }
 
     private fun startWorkout() {
+        if (_workoutState.value.isTracking) return
+
         createNotificationChannel()
 
         pathPointsList.clear()
         totalDistanceMeters = 0f
         lastLocation = null
+        initialStepCount = -1
+        lastStepDetectedAtMs = 0L
 
         _workoutState.value = WorkoutState(
             isTracking = true,
@@ -190,6 +196,9 @@ class WorkoutSensorService : Service(), SensorEventListener {
             }
 
             val sessionSteps = totalStepsSinceBoot - initialStepCount
+            if (sessionSteps > _workoutState.value.steps) {
+                lastStepDetectedAtMs = SystemClock.elapsedRealtime()
+            }
             _workoutState.value = _workoutState.value.copy(steps = sessionSteps)
             updateNotification()
         }
@@ -236,16 +245,32 @@ class WorkoutSensorService : Service(), SensorEventListener {
         val accuracy = if (newLocation.hasAccuracy()) newLocation.accuracy else 50f
 
         // Ignora leituras do GPS caso a precisão seja pior que 25 metros
-        if (accuracy > 25f) {
+        if (accuracy > MAX_ROUTE_ACCURACY_METERS) {
             _workoutState.value = _workoutState.value.copy(gpsAccuracyMeters = accuracy)
+            return
+        }
+
+        val hasRecentStep = lastStepDetectedAtMs > 0L &&
+            SystemClock.elapsedRealtime() - lastStepDetectedAtMs <= RECENT_STEP_WINDOW_MS
+        if (!hasRecentStep) {
+            _workoutState.value = _workoutState.value.copy(
+                gpsAccuracyMeters = accuracy,
+                currentLocation = newLocation
+            )
             return
         }
 
         lastLocation?.let { previous ->
             val distance = previous.distanceTo(newLocation)
-            if (distance >= 1.0f) {
-                totalDistanceMeters += distance
+            val elapsedSeconds = ((newLocation.time - previous.time).coerceAtLeast(1L)) / 1000f
+            val impliedSpeedMps = distance / elapsedSeconds
+
+            if (distance < MIN_ROUTE_POINT_DISTANCE_METERS || impliedSpeedMps > MAX_WALKING_SPEED_MPS) {
+                _workoutState.value = _workoutState.value.copy(gpsAccuracyMeters = accuracy)
+                return
             }
+
+            totalDistanceMeters += distance
         }
 
         lastLocation = newLocation
@@ -305,5 +330,9 @@ class WorkoutSensorService : Service(), SensorEventListener {
 
         private const val LOCATION_INTERVAL_MS = 2000L
         private const val LOCATION_FASTEST_INTERVAL_MS = 1000L
+        private const val MAX_ROUTE_ACCURACY_METERS = 15f
+        private const val MIN_ROUTE_POINT_DISTANCE_METERS = 3f
+        private const val MAX_WALKING_SPEED_MPS = 7f
+        private const val RECENT_STEP_WINDOW_MS = 8_000L
     }
 }

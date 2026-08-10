@@ -15,6 +15,9 @@ val properties = Properties().apply {
     }
 }
 
+val apiBaseUrl = properties.getProperty("API_BASE_URL", "http://10.0.2.2:8083/")
+require(apiBaseUrl.endsWith("/")) { "API_BASE_URL deve terminar com /" }
+
 android {
     namespace = "com.fitworkup.app"
     compileSdk = 35
@@ -30,6 +33,7 @@ android {
 
         // Injeção da Chave do Google Maps no AndroidManifest.xml
         manifestPlaceholders["MAPS_API_KEY"] = properties.getProperty("MAPS_API_KEY", "")
+        buildConfigField("String", "API_BASE_URL", "\"$apiBaseUrl\"")
     }
 
     buildTypes {
@@ -58,6 +62,7 @@ android {
 }
 
 dependencies {
+    implementation("androidx.datastore:datastore-preferences:1.1.1")
     val roomVersion = "2.6.1"
     implementation("androidx.room:room-runtime:$roomVersion")
     implementation("androidx.room:room-ktx:$roomVersion")
