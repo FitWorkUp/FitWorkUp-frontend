@@ -23,7 +23,10 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.fitworkup.app.domain.model.LeagueInfo
 import com.fitworkup.app.domain.model.RankingUiState
+import com.fitworkup.app.domain.model.RankingUser
 import com.fitworkup.app.ui.screens.ranking.components.RankingViewModel
+import java.text.NumberFormat
+import java.util.Locale
 
 @Composable
 fun RankingTabRoute(
@@ -79,7 +82,10 @@ fun RankingTabContent(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 // ─── CABEÇALHO DA LIGA
-                LeagueHeaderCard(leagueInfo = uiState.leagueInfo)
+                LeagueHeaderCard(
+                    leagueInfo = uiState.leagueInfo,
+                    stepsPerPoint = uiState.stepsPerPoint
+                )
 
                 Spacer(modifier = Modifier.height(24.dp))
 
@@ -106,13 +112,13 @@ fun RankingTabContent(
                     verticalAlignment = Alignment.Bottom
                 ) {
                     second?.let {
-                        PodiumItem(name = it.name, xp = "${it.xp} XP", rank = "2", height = 110, color = Color(0xFFC0C0C0))
+                        PodiumItem(user = it, height = 110, color = Color(0xFFC0C0C0))
                     }
                     first?.let {
-                        PodiumItem(name = it.name, xp = "${it.xp} XP", rank = "1", height = 140, color = Color(0xFFFFD700))
+                        PodiumItem(user = it, height = 140, color = Color(0xFFFFD700))
                     }
                     third?.let {
-                        PodiumItem(name = it.name, xp = "${it.xp} XP", rank = "3", height = 95, color = Color(0xFFCD7F32))
+                        PodiumItem(user = it, height = 95, color = Color(0xFFCD7F32))
                     }
                 }
 
@@ -131,9 +137,8 @@ fun RankingTabContent(
                     Spacer(modifier = Modifier.height(8.dp))
 
                     LeaderboardRow(
-                        rank = user.rank.toString(),
-                        name = "${user.name} (Você)",
-                        xp = "${user.xp} XP",
+                        user = user,
+                        displayName = "${user.name} (Você)",
                         isCurrentUser = true
                     )
 
@@ -155,9 +160,7 @@ fun RankingTabContent(
                     uiState.otherAthletes.forEach { athlete ->
                         if (!athlete.isCurrentUser) {
                             LeaderboardRow(
-                                rank = athlete.rank.toString(),
-                                name = athlete.name,
-                                xp = "${athlete.xp} XP"
+                                user = athlete
                             )
                             Spacer(modifier = Modifier.height(8.dp))
                         }
@@ -169,7 +172,7 @@ fun RankingTabContent(
 }
 
 @Composable
-private fun LeagueHeaderCard(leagueInfo: LeagueInfo) {
+private fun LeagueHeaderCard(leagueInfo: LeagueInfo, stepsPerPoint: Int) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer),
@@ -194,9 +197,14 @@ private fun LeagueHeaderCard(leagueInfo: LeagueInfo) {
                     color = MaterialTheme.colorScheme.onTertiaryContainer
                 )
                 Text(
-                    text = "Termina em: ${leagueInfo.timeRemaining}",
+                    text = leagueInfo.timeRemaining,
                     fontSize = 12.sp,
                     color = MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.8f)
+                )
+                Text(
+                    text = "$stepsPerPoint passos validados = 1 ponto",
+                    fontSize = 11.sp,
+                    color = MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.72f)
                 )
             }
         }
@@ -204,7 +212,7 @@ private fun LeagueHeaderCard(leagueInfo: LeagueInfo) {
 }
 
 @Composable
-private fun PodiumItem(name: String, xp: String, rank: String, height: Int, color: Color) {
+private fun PodiumItem(user: RankingUser, height: Int, color: Color) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier.width(90.dp)
@@ -215,7 +223,7 @@ private fun PodiumItem(name: String, xp: String, rank: String, height: Int, colo
                 .background(color.copy(alpha = 0.2f), CircleShape),
             contentAlignment = Alignment.Center
         ) {
-            Text(text = name.take(2).uppercase(), fontWeight = FontWeight.Bold, color = color)
+            Text(text = user.name.take(2).uppercase(), fontWeight = FontWeight.Bold, color = color)
         }
 
         Spacer(modifier = Modifier.height(8.dp))
@@ -229,7 +237,7 @@ private fun PodiumItem(name: String, xp: String, rank: String, height: Int, colo
             contentAlignment = Alignment.Center
         ) {
             Text(
-                text = rank,
+                text = user.rank.toString(),
                 fontSize = 28.sp,
                 fontWeight = FontWeight.Black,
                 color = Color.White
@@ -238,13 +246,28 @@ private fun PodiumItem(name: String, xp: String, rank: String, height: Int, colo
 
         Spacer(modifier = Modifier.height(4.dp))
 
-        Text(text = name, fontSize = 12.sp, fontWeight = FontWeight.Bold, maxLines = 1)
-        Text(text = xp, fontSize = 11.sp, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
+        Text(text = user.name, fontSize = 12.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+        Text(
+            text = "${user.movementPoints} pts",
+            fontSize = 11.sp,
+            color = MaterialTheme.colorScheme.primary,
+            fontWeight = FontWeight.SemiBold
+        )
+        Text(
+            text = "${formatSteps(user.validatedSteps)} passos",
+            fontSize = 9.sp,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1
+        )
     }
 }
 
 @Composable
-private fun LeaderboardRow(rank: String, name: String, xp: String, isCurrentUser: Boolean = false) {
+private fun LeaderboardRow(
+    user: RankingUser,
+    displayName: String = user.name,
+    isCurrentUser: Boolean = false
+) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
@@ -260,7 +283,7 @@ private fun LeaderboardRow(rank: String, name: String, xp: String, isCurrentUser
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = rank,
+                text = user.rank.toString(),
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.width(28.dp),
@@ -277,7 +300,7 @@ private fun LeaderboardRow(rank: String, name: String, xp: String, isCurrentUser
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = name.take(2).uppercase(),
+                    text = user.name.take(2).uppercase(),
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Bold,
                     color = if (isCurrentUser) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
@@ -287,19 +310,40 @@ private fun LeaderboardRow(rank: String, name: String, xp: String, isCurrentUser
             Spacer(modifier = Modifier.width(16.dp))
 
             Text(
-                text = name,
+                text = displayName,
                 fontSize = 15.sp,
                 fontWeight = if (isCurrentUser) FontWeight.Bold else FontWeight.Normal,
                 modifier = Modifier.weight(1f),
                 color = if (isCurrentUser) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface
             )
 
-            Text(
-                text = xp,
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Bold,
-                color = if (isCurrentUser) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            Column(horizontalAlignment = Alignment.End) {
+                Text(
+                    text = "${user.movementPoints} pts",
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = if (isCurrentUser) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
+                    text = "${formatSteps(user.validatedSteps)} passos • ${activeDaysLabel(user.activeDays)}",
+                    fontSize = 10.sp,
+                    color = if (isCurrentUser) {
+                        MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.72f)
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.72f)
+                    }
+                )
+            }
         }
     }
+}
+
+private fun formatSteps(steps: Long): String = NumberFormat
+    .getIntegerInstance(Locale("pt", "BR"))
+    .format(steps)
+
+private fun activeDaysLabel(activeDays: Int): String = if (activeDays == 1) {
+    "1 dia ativo"
+} else {
+    "$activeDays dias ativos"
 }

@@ -7,6 +7,7 @@ import com.fitworkup.app.data.remote.api.FriendshipApiService
 import com.fitworkup.app.data.remote.api.FitWorkUpApi
 import com.fitworkup.app.data.remote.api.UserApiService
 import com.fitworkup.app.data.remote.api.StoreApiService
+import com.fitworkup.app.data.remote.api.RankingApiService
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -81,5 +82,11 @@ object NetworkModule {
     @Singleton
     fun provideStoreApiService(retrofit: Retrofit): StoreApiService {
         return retrofit.create(StoreApiService::class.java)
+    }
+
+    @Provides
+    @Singleton
+    fun provideRankingApiService(retrofit: Retrofit): RankingApiService {
+        return retrofit.create(RankingApiService::class.java)
     }
 }

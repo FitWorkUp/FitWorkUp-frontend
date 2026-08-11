@@ -4,19 +4,29 @@ import com.fitworkup.app.domain.model.RankingUser
 
 data class LeaderboardEntryDto(
     val userId: Long,
-    val userName: String,
-    val xp: Int,
+    val username: String,
     val position: Int,
-    val avatarUrl: String?
+    val validatedSteps: Long,
+    val movementPoints: Long,
+    val activeDays: Int,
+    val currentUser: Boolean
 ) {
-    fun toDomain(currentUserId: Long): RankingUser {
+    fun toDomain(): RankingUser {
         return RankingUser(
             id = userId.toString(),
-            name = userName,
-            xp = xp,
+            name = username,
+            movementPoints = movementPoints,
+            validatedSteps = validatedSteps,
+            activeDays = activeDays,
             rank = position,
-            avatarUrl = avatarUrl,
-            isCurrentUser = userId == currentUserId
+            isCurrentUser = currentUser
         )
     }
 }
+
+data class WeeklyRankingResponseDto(
+    val weekStart: String,
+    val weekEnd: String,
+    val stepsPerPoint: Int,
+    val entries: List<LeaderboardEntryDto>
+)
