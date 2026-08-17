@@ -8,7 +8,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MilitaryTech
-import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -24,6 +23,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.fitworkup.app.domain.model.LeagueInfo
 import com.fitworkup.app.domain.model.RankingUiState
 import com.fitworkup.app.domain.model.RankingUser
+import com.fitworkup.app.ui.components.RemoteContentError
 import com.fitworkup.app.ui.screens.ranking.components.RankingViewModel
 import java.text.NumberFormat
 import java.util.Locale
@@ -54,20 +54,16 @@ fun RankingTabContent(
             }
         }
         is RankingUiState.Error -> {
-            Column(
+            Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
+                    .background(MaterialTheme.colorScheme.background),
+                contentAlignment = Alignment.Center
             ) {
-                Text(text = uiState.message, color = MaterialTheme.colorScheme.error)
-                Spacer(modifier = Modifier.height(16.dp))
-                Button(onClick = onRetry) {
-                    Icon(imageVector = Icons.Default.Refresh, contentDescription = null)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Tentar Novamente")
-                }
+                RemoteContentError(
+                    onRetry = onRetry,
+                    title = "Ranking indisponível"
+                )
             }
         }
         is RankingUiState.Success -> {

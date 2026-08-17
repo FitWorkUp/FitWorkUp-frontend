@@ -43,11 +43,11 @@ class StoreViewModel @Inject constructor(
                         )
                     }
                 }
-                .onFailure { error ->
+                .onFailure {
                     _uiState.update {
                         it.copy(
                             isLoading = false,
-                            errorMessage = error.message ?: "Não foi possível carregar a loja."
+                            errorMessage = "Não foi possível carregar a loja."
                         )
                     }
                 }
@@ -82,11 +82,11 @@ class StoreViewModel @Inject constructor(
                         )
                     }
                 }
-                .onFailure { error ->
+                .onFailure {
                     _uiState.update {
                         it.copy(
                             processingItemId = null,
-                            notification = error.message ?: "Não foi possível concluir a compra."
+                            notification = "Não foi possível concluir a compra. Verifique sua conexão."
                         )
                     }
                 }
@@ -113,11 +113,11 @@ class StoreViewModel @Inject constructor(
                         )
                     }
                 }
-                .onFailure { error ->
+                .onFailure {
                     _uiState.update {
                         it.copy(
                             processingItemId = null,
-                            notification = error.message ?: "Não foi possível equipar o item."
+                            notification = "Não foi possível equipar o item. Verifique sua conexão."
                         )
                     }
                 }

@@ -1,6 +1,7 @@
 package com.fitworkup.app.ui.screens.profile.components
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -22,6 +23,7 @@ import com.fitworkup.app.domain.model.FriendItem
 fun FriendsListBottomSheet(
     friendsList: List<FriendItem>,
     onDismissRequest: () -> Unit,
+    onFriendClick: (FriendItem) -> Unit,
     onRemoveFriend: (String) -> Unit
 ) {
     // 🟢 Estado para controlar qual amigo está prestes a ser excluído (controla a exibição do AlertDialog)
@@ -67,6 +69,7 @@ fun FriendsListBottomSheet(
                     items(friendsList) { friend ->
                         FriendRowItem(
                             friend = friend,
+                            onClick = { onFriendClick(friend) },
                             onRemoveClick = { friendToDelete = friend } // 🟢 Abre o diálogo em vez de excluir direto
                         )
                     }
@@ -106,9 +109,11 @@ fun FriendsListBottomSheet(
 }
 
 @Composable
-private fun FriendRowItem(friend: FriendItem, onRemoveClick: () -> Unit) {
+private fun FriendRowItem(friend: FriendItem, onClick: () -> Unit, onRemoveClick: () -> Unit) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)

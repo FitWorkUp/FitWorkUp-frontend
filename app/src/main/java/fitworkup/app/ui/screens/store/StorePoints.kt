@@ -52,6 +52,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.fitworkup.app.domain.model.StoreItem
+import com.fitworkup.app.ui.components.RemoteContentError
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -78,10 +79,10 @@ fun StorePoints(viewModel: StoreViewModel = hiltViewModel()) {
         when {
             uiState.isLoading -> CircularProgressIndicator(Modifier.align(Alignment.Center))
 
-            uiState.errorMessage != null && uiState.items.isEmpty() -> ErrorContent(
-                message = uiState.errorMessage.orEmpty(),
+            uiState.errorMessage != null && uiState.items.isEmpty() -> RemoteContentError(
                 onRetry = viewModel::refresh,
-                modifier = Modifier.align(Alignment.Center)
+                modifier = Modifier.align(Alignment.Center),
+                title = "Loja indisponível"
             )
 
             else -> LazyVerticalGrid(
@@ -430,15 +431,3 @@ private fun formatActiveUntil(value: String): String = runCatching {
     val localTime = Instant.parse(value).atZone(ZoneId.systemDefault()).format(formatter)
     "Ativo até $localTime"
 }.getOrDefault("Bônus ativo")
-
-@Composable
-private fun ErrorContent(message: String, onRetry: () -> Unit, modifier: Modifier = Modifier) {
-    Column(
-        modifier = modifier.padding(24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Text(text = message, color = MaterialTheme.colorScheme.error, textAlign = TextAlign.Center)
-        Spacer(Modifier.height(12.dp))
-        Button(onClick = onRetry) { Text("Tentar novamente") }
-    }
-}

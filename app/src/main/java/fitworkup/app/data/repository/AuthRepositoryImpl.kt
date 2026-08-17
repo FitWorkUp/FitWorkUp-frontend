@@ -2,7 +2,9 @@ package com.fitworkup.app.data.repository
 
 import com.fitworkup.app.data.remote.api.AuthApiService
 import com.fitworkup.app.data.remote.dto.LoginRequestDto
+import com.fitworkup.app.data.remote.dto.ForgotPasswordRequestDto
 import com.fitworkup.app.data.remote.dto.RegisterRequestDto
+import com.fitworkup.app.data.remote.dto.ResetPasswordRequestDto
 import com.fitworkup.app.data.session.TokenStore
 import com.fitworkup.app.domain.model.UserProfile
 import com.fitworkup.app.domain.repository.AuthRepository
@@ -33,6 +35,32 @@ class AuthRepositoryImpl @Inject constructor(
             throw IllegalStateException("Não foi possível criar a conta.")
         }
         login(email, password).getOrThrow()
+    }
+
+    override suspend fun requestPasswordReset(email: String): Result<Unit> = runCatching {
+        val response = authApiService.forgotPassword(
+            ForgotPasswordRequestDto(email.trim().lowercase())
+        )
+        if (!response.isSuccessful) {
+            throw IllegalStateException("Não foi possível enviar o código. Verifique a conexão.")
+        }
+    }
+
+    override suspend fun resetPassword(
+        email: String,
+        code: String,
+        newPassword: String
+    ): Result<Unit> = runCatching {
+        val response = authApiService.resetPassword(
+            ResetPasswordRequestDto(
+                email = email.trim().lowercase(),
+                code = code.trim(),
+                newPassword = newPassword
+            )
+        )
+        if (!response.isSuccessful) {
+            throw IllegalArgumentException("Código inválido, expirado ou com muitas tentativas.")
+        }
     }
 
     override suspend fun logout() {

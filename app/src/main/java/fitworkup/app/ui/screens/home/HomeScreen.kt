@@ -21,6 +21,7 @@ import com.fitworkup.app.ui.screens.store.StorePoints
 fun HomeScreen(
     onStartWorkoutClick: () -> Unit,
     onSettingsClick: () -> Unit,
+    onFriendProfileClick: (String) -> Unit,
     viewModel: HomeViewModel = hiltViewModel()
 ) {
     val homeUiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -84,7 +85,10 @@ fun HomeScreen(
                 )
                 1 -> RankingTabRoute()
                 2 -> StorePoints()
-                3 -> ProfileScreen(onSettingsClick = onSettingsClick)
+                3 -> ProfileScreen(
+                    onSettingsClick = onSettingsClick,
+                    onFriendProfileClick = onFriendProfileClick
+                )
             }
         }
     }

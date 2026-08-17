@@ -18,6 +18,7 @@ data class UserProfile(
 
 data class FriendItem(
     val id: String,
+    val userId: String? = null,
     val name: String,
     val tag: String,
     val level: Int,
@@ -33,4 +34,9 @@ data class BadgeItem(
     val iconName: String? = null,
     val xpReward: Int = 0,
     val fitcoinsReward: Int = 0
+)
+
+data class FriendProfileDetails(
+    val profile: UserProfile,
+    val badges: List<BadgeItem>
 )

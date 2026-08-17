@@ -5,6 +5,7 @@ import com.fitworkup.app.data.remote.api.UserApiService
 import com.fitworkup.app.data.remote.dto.FriendshipRequestDto
 import com.fitworkup.app.domain.model.BadgeItem
 import com.fitworkup.app.domain.model.FriendItem
+import com.fitworkup.app.domain.model.FriendProfileDetails
 import com.fitworkup.app.domain.model.UserProfile
 import java.util.Locale
 import javax.inject.Inject
@@ -42,8 +43,31 @@ class ProfileRepositoryImpl @Inject constructor(
                 }
                 FriendItem(
                     id = friendship.id.toString(),
+                    userId = if (friendship.userId == currentUser.id) {
+                        friendship.friendId.toString()
+                    } else {
+                        friendship.userId.toString()
+                    },
                     name = otherUsername,
                     tag = otherUsername,
+                    level = 1
+                )
+            }
+        })
+    }
+
+    override fun getPendingFriendRequests(): Flow<Result<List<FriendItem>>> = flow {
+        emit(runCatching {
+            val response = friendshipApiService.getPendingRequests()
+            val requests = response.body()?.takeIf { response.isSuccessful }
+                ?: error("Falha ao carregar solicitações (${response.code()}).")
+
+            requests.map { friendship ->
+                FriendItem(
+                    id = friendship.id.toString(),
+                    userId = friendship.userId.toString(),
+                    name = friendship.username,
+                    tag = friendship.username,
                     level = 1
                 )
             }
@@ -59,6 +83,12 @@ class ProfileRepositoryImpl @Inject constructor(
                 emptyList()
             }
         })
+    }
+
+    override suspend fun getFriendProfile(userId: String): Result<FriendProfileDetails> = runCatching {
+        val response = userApiService.getPublicProfile(userId.toLong())
+        response.body()?.takeIf { response.isSuccessful }?.toDomain()
+            ?: error("Não foi possível carregar o perfil do amigo.")
     }
 
     override suspend fun removeFriend(friendId: String): Result<Unit> = runCatching {

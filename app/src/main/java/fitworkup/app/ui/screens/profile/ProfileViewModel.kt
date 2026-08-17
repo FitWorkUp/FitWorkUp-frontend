@@ -3,6 +3,8 @@ package com.fitworkup.app.ui.screens.profile
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.fitworkup.app.data.repository.ProfileRepository
+import com.fitworkup.app.data.connectivity.ConnectivityStatus
+import com.fitworkup.app.data.connectivity.NetworkMonitor
 import com.fitworkup.app.domain.model.BadgeItem
 import com.fitworkup.app.domain.model.FriendItem
 import com.fitworkup.app.domain.model.UserProfile
@@ -14,6 +16,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -22,7 +25,9 @@ data class ProfileUiState(
     val isLoading: Boolean = true,
     val profile: UserProfile? = null,
     val friends: List<FriendItem> = emptyList(),
+    val pendingRequests: List<FriendItem> = emptyList(),
     val badges: List<BadgeItem> = emptyList(),
+    val processingFriendshipId: String? = null,
     val errorMessage: String? = null
 )
 
@@ -32,7 +37,8 @@ sealed interface ProfileUiEvent {
 
 @HiltViewModel
 class ProfileViewModel @Inject constructor(
-    private val profileRepository: ProfileRepository
+    private val profileRepository: ProfileRepository,
+    private val networkMonitor: NetworkMonitor
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ProfileUiState())
@@ -45,19 +51,32 @@ class ProfileViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
 
+            if (networkMonitor.status.first() == ConnectivityStatus.OFFLINE) {
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        errorMessage = "Sem conexão com a internet."
+                    )
+                }
+                return@launch
+            }
+
             combine(
                 profileRepository.getUserProfile(),
                 profileRepository.getFriends(),
+                profileRepository.getPendingFriendRequests(),
                 profileRepository.getBadges()
-            ) { profileResult, friendsResult, badgesResult ->
+            ) { profileResult, friendsResult, pendingResult, badgesResult ->
                 val profile = profileResult.getOrNull()
                 val friends = friendsResult.getOrDefault(emptyList())
+                val pendingRequests = pendingResult.getOrDefault(emptyList())
                 val badges = badgesResult.getOrDefault(emptyList())
 
                 ProfileUiState(
                     isLoading = false,
                     profile = profile,
                     friends = friends,
+                    pendingRequests = pendingRequests,
                     badges = badges,
                     errorMessage = if (profile == null) "Falha ao carregar dados do perfil." else null
                 )
@@ -89,6 +108,56 @@ class ProfileViewModel @Inject constructor(
             } else {
                 val errorMsg = result.exceptionOrNull()?.message ?: "Erro ao enviar solicitação."
                 _uiEvent.emit(ProfileUiEvent.ShowSnackbar(errorMsg))
+            }
+        }
+    }
+
+    fun acceptFriendRequest(friendshipId: String) {
+        updateFriendRequest(friendshipId, accept = true)
+    }
+
+    fun rejectFriendRequest(friendshipId: String) {
+        updateFriendRequest(friendshipId, accept = false)
+    }
+
+    private fun updateFriendRequest(friendshipId: String, accept: Boolean) {
+        if (_uiState.value.processingFriendshipId != null) return
+
+        viewModelScope.launch {
+            _uiState.update { it.copy(processingFriendshipId = friendshipId) }
+
+            val result = if (accept) {
+                profileRepository.acceptFriendRequest(friendshipId)
+            } else {
+                profileRepository.rejectFriendRequest(friendshipId)
+            }
+
+            if (result.isSuccess) {
+                _uiState.update { state ->
+                    state.copy(
+                        pendingRequests = state.pendingRequests.filterNot { it.id == friendshipId },
+                        processingFriendshipId = null
+                    )
+                }
+                _uiEvent.emit(
+                    ProfileUiEvent.ShowSnackbar(
+                        if (accept) "Solicitação aceita." else "Solicitação recusada."
+                    )
+                )
+                if (accept) refreshFriends()
+            } else {
+                _uiState.update { it.copy(processingFriendshipId = null) }
+                _uiEvent.emit(ProfileUiEvent.ShowSnackbar("Não foi possível atualizar a solicitação."))
+            }
+        }
+    }
+
+    private fun refreshFriends() {
+        viewModelScope.launch {
+            profileRepository.getFriends().collect { result ->
+                result.onSuccess { friends ->
+                    _uiState.update { it.copy(friends = friends) }
+                }
             }
         }
     }

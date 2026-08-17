@@ -15,8 +15,10 @@ val properties = Properties().apply {
     }
 }
 
-val apiBaseUrl = properties.getProperty("API_BASE_URL", "http://10.0.2.2:8083/")
-require(apiBaseUrl.endsWith("/")) { "API_BASE_URL deve terminar com /" }
+val apiBaseUrl = properties.getProperty("API_BASE_URL", "http://10.0.0.101:8083/")
+    .trim()
+    .removeSurrounding("\"")
+    .let { if (it.endsWith("/")) it else "$it/" }
 
 android {
     namespace = "com.fitworkup.app"
