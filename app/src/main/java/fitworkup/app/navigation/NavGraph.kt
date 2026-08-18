@@ -1,6 +1,7 @@
 package com.fitworkup.app.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
@@ -12,6 +13,7 @@ import com.fitworkup.app.ui.screens.splash.SplashScreen
 import com.fitworkup.app.ui.screens.workout.WorkoutScreen
 import com.fitworkup.app.ui.screens.login.LoginScreen
 import com.fitworkup.app.ui.screens.login.PasswordRecoveryScreen
+import com.fitworkup.app.data.session.SessionManager
 
 object Routes {
     const val SPLASH      = "splash"
@@ -27,8 +29,17 @@ object Routes {
 }
 
 @Composable
-fun NavGraph() {
+fun NavGraph(sessionManager: SessionManager) {
     val navController = rememberNavController()
+
+    LaunchedEffect(sessionManager, navController) {
+        sessionManager.sessionExpired.collect {
+            navController.navigate(Routes.LOGIN) {
+                popUpTo(navController.graph.id) { inclusive = true }
+                launchSingleTop = true
+            }
+        }
+    }
 
     NavHost(
         navController = navController,

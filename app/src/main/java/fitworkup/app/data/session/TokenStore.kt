@@ -34,6 +34,8 @@ class TokenStore @Inject constructor(
 
     fun getTokenBlocking(): String? = runBlocking { tokenFlow.first() }
 
+    fun clearBlocking() = runBlocking { clear() }
+
     private companion object {
         val ACCESS_TOKEN = stringPreferencesKey("access_token")
     }

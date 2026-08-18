@@ -49,16 +49,34 @@ fun ProfileScreen(
 
     Box(modifier = Modifier.fillMaxSize()) {
         when {
-            uiState.isLoading && uiState.profile == null -> {
-                CircularProgressIndicator(Modifier.align(Alignment.Center))
-            }
-
-            uiState.profile == null -> {
-                RemoteContentError(
-                    onRetry = viewModel::loadProfileData,
-                    title = "Perfil indisponível",
-                    modifier = Modifier.align(Alignment.Center)
+            uiState.profile == null -> Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(MaterialTheme.colorScheme.background)
+                    .padding(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                ProfileTopBar(
+                    pendingRequestCount = uiState.pendingRequests.size,
+                    onNotificationsClick = { showFriendRequestsSheet = true },
+                    onSettingsClick = onSettingsClick
                 )
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f),
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (uiState.isLoading) {
+                        CircularProgressIndicator()
+                    } else {
+                        RemoteContentError(
+                            onRetry = viewModel::loadProfileData,
+                            title = "Perfil indisponível"
+                        )
+                    }
+                }
             }
 
             else -> Column(

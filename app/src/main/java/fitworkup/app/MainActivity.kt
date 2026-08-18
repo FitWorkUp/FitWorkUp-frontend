@@ -16,6 +16,7 @@ import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.fitworkup.app.data.connectivity.ConnectivityStatus
 import com.fitworkup.app.data.connectivity.NetworkMonitor
+import com.fitworkup.app.data.session.SessionManager
 import com.fitworkup.app.navigation.NavGraph
 import com.fitworkup.app.ui.components.OfflineBanner
 import com.fitworkup.app.ui.theme.FitWorkUpTheme
@@ -26,6 +27,9 @@ import javax.inject.Inject
 class MainActivity : ComponentActivity() {
     @Inject
     lateinit var networkMonitor: NetworkMonitor
+
+    @Inject
+    lateinit var sessionManager: SessionManager
 
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen()
@@ -38,7 +42,7 @@ class MainActivity : ComponentActivity() {
 
             FitWorkUpTheme {
                 Box(modifier = Modifier.fillMaxSize()) {
-                    NavGraph()
+                    NavGraph(sessionManager = sessionManager)
 
                     AnimatedVisibility(
                         visible = connectivityStatus == ConnectivityStatus.OFFLINE,
