@@ -26,6 +26,17 @@ class WorkoutViewModel @Inject constructor(
     val uiState: StateFlow<WorkoutUiState> = _uiState.asStateFlow()
 
     private var lastProcessedSteps: Int = 0
+
+    fun configureWorkout(goalKm: Double?, groupSessionId: Long?) {
+        val sanitizedGoal = goalKm?.takeIf { it.isFinite() && it > 0.0 }
+        _uiState.update {
+            it.copy(
+                targetDistanceKm = sanitizedGoal,
+                groupSessionId = groupSessionId?.takeIf { id -> id > 0L }
+            )
+        }
+    }
+
     fun onServiceConnected(service: WorkoutSensorService) {
         viewModelScope.launch {
             service.workoutState.collect { state ->
@@ -133,7 +144,8 @@ class WorkoutViewModel @Inject constructor(
                             timestamp = location.time,
                             accuracyMeters = location.accuracy
                         )
-                    }
+                    },
+                    groupSessionId = state.groupSessionId
                 )
 
                 val result = activityRepository.registerActivity(request)

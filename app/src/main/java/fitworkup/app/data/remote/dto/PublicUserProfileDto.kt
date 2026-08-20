@@ -12,6 +12,7 @@ data class PublicUserProfileDto(
     val streak: Int,
     val totalDistanceKm: Double,
     val avatarBorder: String,
+    val avatarKey: String = "ICONMAN1",
     val prestigeTitle: String,
     val achievements: List<UserAchievementDto>
 ) {
@@ -27,7 +28,8 @@ data class PublicUserProfileDto(
             totalKm = totalDistanceKm,
             streakDays = streak,
             fitCoins = 0,
-            avatarBorder = avatarBorder
+            avatarBorder = avatarBorder,
+            avatarKey = avatarKey
         ),
         badges = achievements.map(UserAchievementDto::toDomain)
     )

@@ -3,8 +3,6 @@ package com.fitworkup.app.ui.screens.profile
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.fitworkup.app.data.repository.ProfileRepository
-import com.fitworkup.app.data.connectivity.ConnectivityStatus
-import com.fitworkup.app.data.connectivity.NetworkMonitor
 import com.fitworkup.app.domain.model.BadgeItem
 import com.fitworkup.app.domain.model.FriendItem
 import com.fitworkup.app.domain.model.UserProfile
@@ -16,7 +14,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -28,17 +25,18 @@ data class ProfileUiState(
     val pendingRequests: List<FriendItem> = emptyList(),
     val badges: List<BadgeItem> = emptyList(),
     val processingFriendshipId: String? = null,
+    val isSavingAvatar: Boolean = false,
     val errorMessage: String? = null
 )
 
 sealed interface ProfileUiEvent {
     data class ShowSnackbar(val message: String) : ProfileUiEvent
+    data object AvatarUpdated : ProfileUiEvent
 }
 
 @HiltViewModel
 class ProfileViewModel @Inject constructor(
-    private val profileRepository: ProfileRepository,
-    private val networkMonitor: NetworkMonitor
+    private val profileRepository: ProfileRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ProfileUiState())
@@ -50,16 +48,6 @@ class ProfileViewModel @Inject constructor(
     fun loadProfileData() {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
-
-            if (networkMonitor.status.first() == ConnectivityStatus.OFFLINE) {
-                _uiState.update {
-                    it.copy(
-                        isLoading = false,
-                        errorMessage = "Sem conexão com a internet."
-                    )
-                }
-                return@launch
-            }
 
             combine(
                 profileRepository.getUserProfile(),
@@ -109,6 +97,24 @@ class ProfileViewModel @Inject constructor(
                 val errorMsg = result.exceptionOrNull()?.message ?: "Erro ao enviar solicitação."
                 _uiEvent.emit(ProfileUiEvent.ShowSnackbar(errorMsg))
             }
+        }
+    }
+
+    fun updateAvatar(avatarKey: String) {
+        if (_uiState.value.isSavingAvatar) return
+        viewModelScope.launch {
+            _uiState.update { it.copy(isSavingAvatar = true) }
+            profileRepository.updateAvatar(avatarKey)
+                .onSuccess { profile ->
+                    _uiState.update { it.copy(profile = profile, isSavingAvatar = false) }
+                    _uiEvent.emit(ProfileUiEvent.AvatarUpdated)
+                }
+                .onFailure {
+                    _uiState.update { it.copy(isSavingAvatar = false) }
+                    _uiEvent.emit(
+                        ProfileUiEvent.ShowSnackbar("Não foi possível atualizar o avatar.")
+                    )
+                }
         }
     }
 

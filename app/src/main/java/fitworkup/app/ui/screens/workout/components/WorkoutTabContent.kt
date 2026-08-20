@@ -1,5 +1,6 @@
 package com.fitworkup.app.ui.screens.home.components
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -8,12 +9,14 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.DirectionsRun
-import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -22,17 +25,18 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.fitworkup.app.ui.components.MonthlyProgressCard
 import com.fitworkup.app.ui.screens.dashboard.DashboardViewModel
 import com.fitworkup.app.ui.screens.home.HomeUiState
+import com.fitworkup.app.ui.screens.profile.components.avatarDrawable
 import com.google.android.gms.maps.model.LatLng
 import java.util.Locale
 
 /**
  * Sobrecarga principal consumida pelo HomeScreen.
- * Conecta o HomeUiState e o DashboardState para unificar Passos, Calorias, Calendário e MiniMapa.
+ * Conecta o HomeUiState e o DashboardState para unificar passos, distância, calendário e minimapa.
  */
 @Composable
 fun WorkoutTabContent(
     homeUiState: HomeUiState,
-    onStartWorkout: () -> Unit,
+    onStartWorkout: (WorkoutSetupAction) -> Unit,
     modifier: Modifier = Modifier,
     dashboardViewModel: DashboardViewModel = hiltViewModel()
 ) {
@@ -45,11 +49,11 @@ fun WorkoutTabContent(
 
     WorkoutTabContent(
         userName = homeUiState.userName,
+        avatarKey = homeUiState.avatarKey,
         fitCoins = homeUiState.fitcoins,
         currentSteps = homeUiState.stepsToday,
         dailyStepGoal = progressiveStepGoal(homeUiState.stepsToday),
         totalKmToday = homeUiState.distanceKmToday.toFloat(),
-        caloriesBurnedToday = homeUiState.caloriesToday,
         routePoints = effectiveRoutePoints,
         onStartWorkout = onStartWorkout,
         modifier = modifier,
@@ -63,13 +67,13 @@ fun WorkoutTabContent(
 @Composable
 fun WorkoutTabContent(
     userName: String = "Atleta",
+    avatarKey: String = "ICONMAN1",
     fitCoins: Int = 0,
     currentSteps: Int = 0,
     dailyStepGoal: Int = 10000,
     totalKmToday: Float = 0.0f,
-    caloriesBurnedToday: Int = 0,
     routePoints: List<LatLng> = emptyList(),
-    onStartWorkout: () -> Unit,
+    onStartWorkout: (WorkoutSetupAction) -> Unit,
     modifier: Modifier = Modifier,
     dashboardViewModel: DashboardViewModel = hiltViewModel()
 ) {
@@ -104,13 +108,16 @@ fun WorkoutTabContent(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Surface(
                         shape = CircleShape,
-                        color = MaterialTheme.colorScheme.primaryContainer,
+                        color = MaterialTheme.colorScheme.surfaceVariant,
                         modifier = Modifier.size(40.dp)
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.Person,
+                        Image(
+                            painter = painterResource(avatarDrawable(avatarKey)),
                             contentDescription = "Perfil",
-                            modifier = Modifier.padding(8.dp)
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .clip(CircleShape)
                         )
                     }
                     Spacer(modifier = Modifier.width(12.dp))
@@ -144,6 +151,7 @@ fun WorkoutTabContent(
                     color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
                     strokeCap = StrokeCap.Round
                 )
+
                 CircularProgressIndicator(
                     progress = { stepProgress },
                     modifier = Modifier.fillMaxSize(),
@@ -152,26 +160,33 @@ fun WorkoutTabContent(
                     strokeCap = StrokeCap.Round
                 )
 
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
                     Text(
                         text = stepGoalLabel(currentSteps),
                         fontSize = 11.sp,
                         fontWeight = FontWeight.SemiBold,
                         color = MaterialTheme.colorScheme.primary
                     )
+
                     Spacer(modifier = Modifier.height(4.dp))
+
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.DirectionsRun,
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(28.dp)
                     )
+
                     Spacer(modifier = Modifier.height(4.dp))
+
                     Text(
                         text = "$currentSteps",
                         fontWeight = FontWeight.ExtraBold,
                         fontSize = 28.sp
                     )
+
                     Text(
                         text = "/ $dailyStepGoal passos",
                         fontSize = 12.sp,
@@ -180,24 +195,14 @@ fun WorkoutTabContent(
                 }
             }
 
-            Spacer(modifier = Modifier.height(28.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
-            // 3. CARTÕES DE PERFORMANCE (DISTÂNCIA E CALORIAS)
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                WorkoutPerformanceCard(
-                    title = "Distância Hoje",
-                    value = String.format(Locale.getDefault(), "%.2f km", totalKmToday),
-                    modifier = Modifier.weight(1f)
-                )
-                WorkoutPerformanceCard(
-                    title = "Calorias Hoje",
-                    value = "$caloriesBurnedToday kcal",
-                    modifier = Modifier.weight(1f)
-                )
-            }
+            // 3. RESUMO DE DISTÂNCIA DO DIA
+            WorkoutPerformanceCard(
+                title = "Distância hoje",
+                value = String.format(Locale.getDefault(), "%.2f km", totalKmToday),
+                modifier = Modifier.fillMaxWidth()
+            )
 
             Spacer(modifier = Modifier.height(24.dp))
 
@@ -263,9 +268,9 @@ fun WorkoutTabContent(
         if (showGoalBottomSheet) {
             WorkoutGoalBottomSheet(
                 onDismissRequest = { showGoalBottomSheet = false },
-                onStartWorkout = { _, _, _ ->
+                onContinue = { action ->
                     showGoalBottomSheet = false
-                    onStartWorkout()
+                    onStartWorkout(action)
                 }
             )
         }
@@ -279,28 +284,45 @@ private fun WorkoutPerformanceCard(
     modifier: Modifier = Modifier
 ) {
     Card(
-        modifier = modifier,
+        modifier = modifier.heightIn(min = 68.dp),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
         )
     ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            horizontalAlignment = Alignment.Start
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 14.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Text(
-                text = title,
-                fontSize = 12.sp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = value,
-                fontWeight = FontWeight.Bold,
-                fontSize = 18.sp,
-                color = MaterialTheme.colorScheme.onSurface
-            )
+            Surface(
+                modifier = Modifier.size(40.dp),
+                shape = CircleShape,
+                color = MaterialTheme.colorScheme.primaryContainer
+            ) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.DirectionsRun,
+                    contentDescription = null,
+                    modifier = Modifier.padding(9.dp),
+                    tint = MaterialTheme.colorScheme.primary
+                )
+            }
+
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = title,
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
+                    text = value,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 18.sp,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            }
         }
     }
 }

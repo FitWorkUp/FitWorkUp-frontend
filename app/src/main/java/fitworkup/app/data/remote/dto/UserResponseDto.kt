@@ -14,6 +14,7 @@ data class UserResponseDto(
     val streak: Int,
     val totalDistanceKm: Double,
     val avatarBorder: String,
+    val avatarKey: String = "ICONMAN1",
     val prestigeTitle: String
 ) {
     fun toDomain(): UserProfile = UserProfile(
@@ -29,6 +30,9 @@ data class UserResponseDto(
         fitCoins = fitcoins,
         email = email,
         weightKg = weightKg,
-        avatarBorder = avatarBorder
+        avatarBorder = avatarBorder,
+        avatarKey = avatarKey
     )
 }
+
+data class UpdateAvatarRequestDto(val avatarKey: String)

@@ -39,6 +39,10 @@ fun WorkoutScreen(
 
     viewModel: WorkoutViewModel = hiltViewModel(),
 
+    distanceGoalKm: Double? = null,
+
+    groupSessionId: Long? = null,
+
     onWorkoutFinished: () -> Unit
 
 ) {
@@ -50,6 +54,10 @@ fun WorkoutScreen(
     val currentViewModel by rememberUpdatedState(viewModel)
 
     val scrollState = rememberScrollState()
+
+    LaunchedEffect(distanceGoalKm, groupSessionId) {
+        viewModel.configureWorkout(distanceGoalKm, groupSessionId)
+    }
 
 
 

@@ -19,6 +19,7 @@ import com.fitworkup.app.ui.screens.profile.components.ProfileHeaderInfo
 import com.fitworkup.app.ui.screens.profile.components.ProfileStatsRow
 import com.fitworkup.app.ui.screens.profile.components.ProfileTopBar
 import com.fitworkup.app.ui.screens.profile.components.ProfileXpProgressCard
+import com.fitworkup.app.ui.screens.profile.components.AvatarPickerBottomSheet
 import com.fitworkup.app.ui.components.RemoteContentError
 
 @Composable
@@ -29,20 +30,25 @@ fun ProfileScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
-    LaunchedEffect(Unit) {
-        viewModel.loadProfileData()
-    }
-
     var showAddFriendSheet by remember { mutableStateOf(false) }
     var showFriendsListSheet by remember { mutableStateOf(false) }
     var showFriendRequestsSheet by remember { mutableStateOf(false) }
+    var showAvatarPicker by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
     val scrollState = rememberScrollState()
+
+    LaunchedEffect(Unit) {
+        viewModel.loadProfileData()
+    }
 
     LaunchedEffect(Unit) {
         viewModel.uiEvent.collect { event ->
             when (event) {
                 is ProfileUiEvent.ShowSnackbar -> snackbarHostState.showSnackbar(event.message)
+                ProfileUiEvent.AvatarUpdated -> {
+                    showAvatarPicker = false
+                    snackbarHostState.showSnackbar("Avatar atualizado com sucesso.")
+                }
             }
         }
     }
@@ -94,7 +100,10 @@ fun ProfileScreen(
                 )
                 Spacer(modifier = Modifier.height(16.dp))
 
-                ProfileHeaderInfo(profile = uiState.profile)
+                ProfileHeaderInfo(
+                    profile = uiState.profile,
+                    onAvatarClick = { showAvatarPicker = true }
+                )
                 Spacer(modifier = Modifier.height(20.dp))
 
                 ProfileXpProgressCard(profile = uiState.profile)
@@ -147,6 +156,17 @@ fun ProfileScreen(
                 onAccept = viewModel::acceptFriendRequest,
                 onReject = viewModel::rejectFriendRequest,
                 onDismissRequest = { showFriendRequestsSheet = false }
+            )
+        }
+
+        if (showAvatarPicker) {
+            AvatarPickerBottomSheet(
+                currentAvatarKey = uiState.profile?.avatarKey ?: "ICONMAN1",
+                isSaving = uiState.isSavingAvatar,
+                onSave = viewModel::updateAvatar,
+                onDismissRequest = {
+                    if (!uiState.isSavingAvatar) showAvatarPicker = false
+                }
             )
         }
 

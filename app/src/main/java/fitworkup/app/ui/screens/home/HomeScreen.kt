@@ -13,13 +13,14 @@ import androidx.compose.ui.graphics.Color
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.fitworkup.app.ui.screens.home.components.WorkoutTabContent
+import com.fitworkup.app.ui.screens.home.components.WorkoutSetupAction
 import com.fitworkup.app.ui.screens.profile.ProfileScreen
 import com.fitworkup.app.ui.screens.ranking.RankingTabRoute
 import com.fitworkup.app.ui.screens.store.StorePoints
 
 @Composable
 fun HomeScreen(
-    onStartWorkoutClick: () -> Unit,
+    onStartWorkoutClick: (WorkoutSetupAction) -> Unit,
     onSettingsClick: () -> Unit,
     onFriendProfileClick: (String) -> Unit,
     viewModel: HomeViewModel = hiltViewModel()
@@ -29,6 +30,7 @@ fun HomeScreen(
 
     LaunchedEffect(selectedTab) {
         if (selectedTab == 0) {
+            viewModel.loadUserProfile()
             viewModel.loadTodaySummary()
         }
     }

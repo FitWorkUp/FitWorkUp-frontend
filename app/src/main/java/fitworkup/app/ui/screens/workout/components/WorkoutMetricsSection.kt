@@ -6,8 +6,9 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.DirectionsRun
-import androidx.compose.material.icons.filled.LocalFireDepartment
 import androidx.compose.material.icons.filled.MonetizationOn
+import androidx.compose.material.icons.filled.Flag
+import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
@@ -22,23 +23,19 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.fitworkup.app.ui.screens.workout.WorkoutUiState
 import java.util.Locale
+import kotlin.math.ceil
 
 @Composable
 fun WorkoutMetricsSection(
     uiState: WorkoutUiState,
-    modifier: Modifier = Modifier,
-    userWeightKg: Float = 70.0f // Peso padrão para cálculo de calorias caso não informado
+    modifier: Modifier = Modifier
 ) {
-    // 🧮 1. CÁLCULO DE CALORIAS (MET)
-    val met = if (uiState.averageSpeedKmH > 4.0f) 7.0f else 3.5f
-    val durationHours = uiState.durationSeconds / 3600.0f
-    val caloriesBurned = (met * userWeightKg * durationHours).toInt()
-
-    // 🪙 2. CÁLCULO DE RECOMPENSAS (XP e FitCoins)
+    // Recompensas exibidas apenas como estimativa durante o treino.
     val estimatedXp = (uiState.totalDistanceKm * 100).toInt()
     val estimatedFitCoins = (uiState.totalDistanceKm * 10).toInt()
+    val formattedDuration = formatDuration(uiState.durationSeconds)
 
-    // 🛡️ 3. STATUS DINÂMICO DE SINAL DO GPS
+    // Status dinâmico do sinal do GPS.
     val (gpsStatusText, gpsColor) = when {
         uiState.gpsAccuracyMeters <= 0f -> "Buscando Satélites..." to Color(0xFFFFB300)
         uiState.gpsAccuracyMeters <= 10f -> "Sinal Forte (Verificado)" to Color(0xFF4CAF50)
@@ -79,7 +76,14 @@ fun WorkoutMetricsSection(
             }
         }
 
-        // 📊 GRID 2x2 DE MÉTRICAS PRINCIPAIS
+        uiState.targetDistanceKm?.let { targetKm ->
+            DistanceGoalProgress(
+                currentDistanceKm = uiState.totalDistanceKm.toDouble(),
+                targetDistanceKm = targetKm
+            )
+        }
+
+        // Grade 2x2 de métricas observáveis, sem estimativa de calorias.
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -92,10 +96,10 @@ fun WorkoutMetricsSection(
                 modifier = Modifier.weight(1f)
             )
             MetricCard(
-                title = "Vel. Média",
-                value = String.format(Locale.getDefault(), "%.1f km/h", uiState.averageSpeedKmH),
-                icon = Icons.Default.Speed,
-                iconColor = Color(0xFF2196F3),
+                title = "Duração",
+                value = formattedDuration,
+                icon = Icons.Default.Schedule,
+                iconColor = Color(0xFF7E57C2),
                 modifier = Modifier.weight(1f)
             )
         }
@@ -105,10 +109,10 @@ fun WorkoutMetricsSection(
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             MetricCard(
-                title = "Calorias",
-                value = "$caloriesBurned kcal",
-                icon = Icons.Default.LocalFireDepartment,
-                iconColor = Color(0xFFFF5722),
+                title = "Vel. Média",
+                value = String.format(Locale.getDefault(), "%.1f km/h", uiState.averageSpeedKmH),
+                icon = Icons.Default.Speed,
+                iconColor = Color(0xFF2196F3),
                 modifier = Modifier.weight(1f)
             )
             MetricCard(
@@ -153,6 +157,100 @@ fun WorkoutMetricsSection(
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun DistanceGoalProgress(
+    currentDistanceKm: Double,
+    targetDistanceKm: Double
+) {
+    val safeCurrentKm = currentDistanceKm.coerceAtLeast(0.0)
+    val remainingKm = (targetDistanceKm - safeCurrentKm).coerceAtLeast(0.0)
+    val progress = (safeCurrentKm / targetDistanceKm).toFloat().coerceIn(0f, 1f)
+    val completed = remainingKm <= 0.0
+    val remainingLabel = when {
+        completed -> "Meta concluída!"
+        remainingKm < 1.0 -> "${ceil(remainingKm * 1_000.0).toInt()} m restantes"
+        else -> String.format(Locale.getDefault(), "%.2f km restantes", remainingKm)
+    }
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = if (completed) {
+                MaterialTheme.colorScheme.primaryContainer
+            } else {
+                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+            }
+        )
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Flag,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                    Text("Meta de distância", fontWeight = FontWeight.Bold)
+                }
+                Text(
+                    text = String.format(Locale.getDefault(), "%.2f km", targetDistanceKm),
+                    style = MaterialTheme.typography.labelLarge
+                )
+            }
+
+            LinearProgressIndicator(
+                progress = { progress },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(8.dp),
+                strokeCap = androidx.compose.ui.graphics.StrokeCap.Round
+            )
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = String.format(Locale.getDefault(), "%.2f km percorridos", safeCurrentKm),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
+                    text = remainingLabel,
+                    style = MaterialTheme.typography.bodySmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = if (completed) MaterialTheme.colorScheme.primary
+                    else MaterialTheme.colorScheme.onSurface
+                )
+            }
+        }
+    }
+}
+
+private fun formatDuration(totalSeconds: Long): String {
+    val safeSeconds = totalSeconds.coerceAtLeast(0L)
+    val hours = safeSeconds / 3600
+    val minutes = (safeSeconds % 3600) / 60
+    val seconds = safeSeconds % 60
+
+    return if (hours > 0) {
+        String.format(Locale.getDefault(), "%02d:%02d:%02d", hours, minutes, seconds)
+    } else {
+        String.format(Locale.getDefault(), "%02d:%02d", minutes, seconds)
     }
 }
 

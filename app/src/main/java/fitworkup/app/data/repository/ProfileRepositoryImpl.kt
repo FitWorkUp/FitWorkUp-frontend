@@ -3,6 +3,7 @@ package com.fitworkup.app.data.repository
 import com.fitworkup.app.data.remote.api.FriendshipApiService
 import com.fitworkup.app.data.remote.api.UserApiService
 import com.fitworkup.app.data.remote.dto.FriendshipRequestDto
+import com.fitworkup.app.data.remote.dto.UpdateAvatarRequestDto
 import com.fitworkup.app.domain.model.BadgeItem
 import com.fitworkup.app.domain.model.FriendItem
 import com.fitworkup.app.domain.model.FriendProfileDetails
@@ -41,6 +42,16 @@ class ProfileRepositoryImpl @Inject constructor(
                 } else {
                     friendship.username
                 }
+                val otherLevel = if (friendship.userId == currentUser.id) {
+                    friendship.friendLevel
+                } else {
+                    friendship.userLevel
+                }
+                val otherAvatarKey = if (friendship.userId == currentUser.id) {
+                    friendship.friendAvatarKey
+                } else {
+                    friendship.userAvatarKey
+                }
                 FriendItem(
                     id = friendship.id.toString(),
                     userId = if (friendship.userId == currentUser.id) {
@@ -50,7 +61,8 @@ class ProfileRepositoryImpl @Inject constructor(
                     },
                     name = otherUsername,
                     tag = otherUsername,
-                    level = 1
+                    level = otherLevel,
+                    avatarKey = otherAvatarKey
                 )
             }
         })
@@ -68,7 +80,8 @@ class ProfileRepositoryImpl @Inject constructor(
                     userId = friendship.userId.toString(),
                     name = friendship.username,
                     tag = friendship.username,
-                    level = 1
+                    level = friendship.userLevel,
+                    avatarKey = friendship.userAvatarKey
                 )
             }
         })
@@ -89,6 +102,12 @@ class ProfileRepositoryImpl @Inject constructor(
         val response = userApiService.getPublicProfile(userId.toLong())
         response.body()?.takeIf { response.isSuccessful }?.toDomain()
             ?: error("Não foi possível carregar o perfil do amigo.")
+    }
+
+    override suspend fun updateAvatar(avatarKey: String): Result<UserProfile> = runCatching {
+        val response = userApiService.updateAvatar(UpdateAvatarRequestDto(avatarKey))
+        response.body()?.takeIf { response.isSuccessful }?.toDomain()
+            ?: error("Não foi possível atualizar o avatar (${response.code()}).")
     }
 
     override suspend fun removeFriend(friendId: String): Result<Unit> = runCatching {

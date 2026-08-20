@@ -1,5 +1,6 @@
 package com.fitworkup.app.ui.screens.profile.components
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -9,7 +10,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.Notifications
-import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -17,6 +18,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -70,7 +73,10 @@ fun ProfileTopBar(
 }
 
 @Composable
-fun ProfileHeaderInfo(profile: UserProfile?) {
+fun ProfileHeaderInfo(
+    profile: UserProfile?,
+    onAvatarClick: (() -> Unit)? = null
+) {
     val avatarBorderColor = when {
         profile?.avatarBorder?.contains("Rubi", ignoreCase = true) == true -> Color(0xFFD32F2F)
         profile?.avatarBorder?.contains("Esmeralda", ignoreCase = true) == true -> Color(0xFF2E7D32)
@@ -85,17 +91,41 @@ fun ProfileHeaderInfo(profile: UserProfile?) {
                     .size(100.dp)
                     .border(4.dp, avatarBorderColor, CircleShape)
                     .padding(6.dp)
+                    .then(
+                        if (onAvatarClick != null) Modifier.clickable(onClick = onAvatarClick)
+                        else Modifier
+                    )
             ) {
                 Surface(
                     shape = CircleShape,
                     color = MaterialTheme.colorScheme.surfaceVariant,
                     modifier = Modifier.fillMaxSize()
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Person,
+                    Image(
+                        painter = painterResource(avatarDrawable(profile?.avatarKey)),
                         contentDescription = "Avatar",
-                        modifier = Modifier.padding(16.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .clip(CircleShape)
+                    )
+                }
+            }
+
+            if (onAvatarClick != null) {
+                Surface(
+                    onClick = onAvatarClick,
+                    modifier = Modifier
+                        .align(Alignment.BottomStart)
+                        .size(30.dp),
+                    shape = CircleShape,
+                    color = MaterialTheme.colorScheme.primary
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Edit,
+                        contentDescription = "Editar avatar",
+                        modifier = Modifier.padding(7.dp),
+                        tint = MaterialTheme.colorScheme.onPrimary
                     )
                 }
             }

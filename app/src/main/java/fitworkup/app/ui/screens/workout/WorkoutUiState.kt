@@ -9,6 +9,8 @@ import android.location.Location
 data class WorkoutUiState(
     val isTracking: Boolean = false,
     val totalDistanceKm: Float = 0f,
+    val targetDistanceKm: Double? = null,
+    val groupSessionId: Long? = null,
     val averageSpeedKmH: Float = 0f,
     val totalSteps: Int = 0,
     val acceptedSteps: Int = 0,

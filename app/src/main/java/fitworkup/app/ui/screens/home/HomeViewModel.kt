@@ -33,10 +33,15 @@ class HomeViewModel @Inject constructor(
         loadTodaySummary()
     }
 
-    private fun loadUserProfile() {
+    fun loadUserProfile() {
         viewModelScope.launch {
             profileRepository.getUserProfile().first().onSuccess { profile ->
-                _uiState.update { it.copy(userName = profile.name) }
+                _uiState.update {
+                    it.copy(
+                        userName = profile.name,
+                        avatarKey = profile.avatarKey
+                    )
+                }
             }
         }
     }
@@ -49,17 +54,12 @@ class HomeViewModel @Inject constructor(
 
                 val calculatedSteps = todayActivities.sumOf { it.steps }
                 val calculatedDistance = todayActivities.sumOf { it.distanceKm }
-                val calculatedCalories = maxOf(
-                    (calculatedDistance * 60.0).toInt(),
-                    (calculatedSteps * 0.04).toInt()
-                )
 
                 _uiState.update { currentState ->
                     currentState.copy(
                         userActivities = activities,
                         stepsToday = if (calculatedSteps > 0) calculatedSteps else currentState.stepsToday,
-                        distanceKmToday = if (calculatedDistance > 0.0) calculatedDistance else currentState.distanceKmToday,
-                        caloriesToday = if (calculatedCalories > 0) calculatedCalories else currentState.caloriesToday
+                        distanceKmToday = if (calculatedDistance > 0.0) calculatedDistance else currentState.distanceKmToday
                     )
                 }
                 loadTodaySummary()
@@ -86,7 +86,6 @@ class HomeViewModel @Inject constructor(
                             isLoading = false,
                             stepsToday = if (summary.totalSteps > 0) summary.totalSteps else currentState.stepsToday,
                             distanceKmToday = if (summary.totalDistanceKm > 0.0) summary.totalDistanceKm else currentState.distanceKmToday,
-                            caloriesToday = if (summary.totalCalories > 0) summary.totalCalories else currentState.caloriesToday,
                             fitcoins = summary.fitcoins,
                             xp = summary.xp,
                             level = summary.level

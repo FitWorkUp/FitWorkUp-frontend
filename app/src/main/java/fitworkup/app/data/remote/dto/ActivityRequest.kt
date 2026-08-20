@@ -31,6 +31,9 @@ data class ActivityRequest(
     @SerializedName("routePoints")
     val routePoints: List<RoutePoint> = emptyList(),
 
+    @SerializedName("groupSessionId")
+    val groupSessionId: Long? = null,
+
     @SerializedName("plannedExerciseSessionId")
     val plannedExerciseSessionId: String? = null,
 

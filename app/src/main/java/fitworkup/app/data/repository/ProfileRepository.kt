@@ -12,6 +12,7 @@ interface ProfileRepository {
     fun getPendingFriendRequests(): Flow<Result<List<FriendItem>>>
     fun getBadges(): Flow<Result<List<BadgeItem>>>
     suspend fun getFriendProfile(userId: String): Result<FriendProfileDetails>
+    suspend fun updateAvatar(avatarKey: String): Result<UserProfile>
 
     suspend fun removeFriend(friendId: String): Result<Unit>
     suspend fun sendFriendRequest(userTagOrEmail: String): Result<Unit>

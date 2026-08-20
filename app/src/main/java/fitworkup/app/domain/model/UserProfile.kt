@@ -13,7 +13,8 @@ data class UserProfile(
     val fitCoins: Int,
     val email: String = "",
     val weightKg: Double? = null,
-    val avatarBorder: String = "DEFAULT"
+    val avatarBorder: String = "DEFAULT",
+    val avatarKey: String = "ICONMAN1"
 )
 
 data class FriendItem(
@@ -22,7 +23,8 @@ data class FriendItem(
     val name: String,
     val tag: String,
     val level: Int,
-    val avatarUrl: String? = null
+    val avatarUrl: String? = null,
+    val avatarKey: String = "ICONMAN1"
 )
 
 data class BadgeItem(

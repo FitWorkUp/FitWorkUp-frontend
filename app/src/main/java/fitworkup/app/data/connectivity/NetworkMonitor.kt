@@ -24,12 +24,13 @@ class NetworkMonitor @Inject constructor(
             val capabilities = connectivityManager
                 .getNetworkCapabilities(connectivityManager.activeNetwork)
 
-            val hasInternet = capabilities
+            // NET_CAPABILITY_VALIDATED testa acesso à internet pública, não a
+            // disponibilidade de uma API local. No emulador, 10.0.2.2 pode estar
+            // acessível mesmo quando o Android ainda não marcou a rede como validada.
+            val hasNetwork = capabilities
                 ?.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) == true
-            val isValidated = capabilities
-                ?.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED) == true
 
-            return if (hasInternet && isValidated) {
+            return if (hasNetwork) {
                 ConnectivityStatus.ONLINE
             } else {
                 ConnectivityStatus.OFFLINE
