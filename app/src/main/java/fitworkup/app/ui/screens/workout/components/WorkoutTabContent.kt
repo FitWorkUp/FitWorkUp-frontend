@@ -37,6 +37,7 @@ import java.util.Locale
 fun WorkoutTabContent(
     homeUiState: HomeUiState,
     onStartWorkout: (WorkoutSetupAction) -> Unit,
+    onWeeklyGoalChanged: (enabled: Boolean, targetDays: Int) -> Unit,
     modifier: Modifier = Modifier,
     dashboardViewModel: DashboardViewModel = hiltViewModel()
 ) {
@@ -54,8 +55,12 @@ fun WorkoutTabContent(
         currentSteps = homeUiState.stepsToday,
         dailyStepGoal = progressiveStepGoal(homeUiState.stepsToday),
         totalKmToday = homeUiState.distanceKmToday.toFloat(),
+        weeklyGoalEnabled = homeUiState.weeklyGoalEnabled,
+        weeklyActiveDays = homeUiState.weeklyActiveDays,
+        weeklyGoalDays = homeUiState.weeklyGoalDays,
         routePoints = effectiveRoutePoints,
         onStartWorkout = onStartWorkout,
+        onWeeklyGoalChanged = onWeeklyGoalChanged,
         modifier = modifier,
         dashboardViewModel = dashboardViewModel
     )
@@ -72,14 +77,19 @@ fun WorkoutTabContent(
     currentSteps: Int = 0,
     dailyStepGoal: Int = 10000,
     totalKmToday: Float = 0.0f,
+    weeklyGoalEnabled: Boolean = true,
+    weeklyActiveDays: Int = 0,
+    weeklyGoalDays: Int = 3,
     routePoints: List<LatLng> = emptyList(),
     onStartWorkout: (WorkoutSetupAction) -> Unit,
+    onWeeklyGoalChanged: (enabled: Boolean, targetDays: Int) -> Unit = { _, _ -> },
     modifier: Modifier = Modifier,
     dashboardViewModel: DashboardViewModel = hiltViewModel()
 ) {
     val dashboardState by dashboardViewModel.uiState.collectAsStateWithLifecycle()
     val scrollState = rememberScrollState()
     var showGoalBottomSheet by remember { mutableStateOf(false) }
+    var showWeeklyGoalBottomSheet by remember { mutableStateOf(false) }
 
     val stepProgress = if (dailyStepGoal > 0) {
         (currentSteps.toFloat() / dailyStepGoal.toFloat()).coerceIn(0f, 1f)
@@ -204,6 +214,16 @@ fun WorkoutTabContent(
                 modifier = Modifier.fillMaxWidth()
             )
 
+            Spacer(modifier = Modifier.height(16.dp))
+
+            WeeklyGoalCard(
+                enabled = weeklyGoalEnabled,
+                activeDays = weeklyActiveDays,
+                targetDays = weeklyGoalDays,
+                onEditClick = { showWeeklyGoalBottomSheet = true },
+                modifier = Modifier.fillMaxWidth()
+            )
+
             Spacer(modifier = Modifier.height(24.dp))
 
             // 4. GRÁFICO HISTÓRICO MENSAL (SINCRONIZADO)
@@ -272,6 +292,18 @@ fun WorkoutTabContent(
                     showGoalBottomSheet = false
                     onStartWorkout(action)
                 }
+            )
+        }
+
+        if (showWeeklyGoalBottomSheet) {
+            WeeklyGoalBottomSheet(
+                currentEnabled = weeklyGoalEnabled,
+                currentTargetDays = weeklyGoalDays,
+                onSave = { enabled, targetDays ->
+                    onWeeklyGoalChanged(enabled, targetDays)
+                    showWeeklyGoalBottomSheet = false
+                },
+                onDismissRequest = { showWeeklyGoalBottomSheet = false }
             )
         }
     }

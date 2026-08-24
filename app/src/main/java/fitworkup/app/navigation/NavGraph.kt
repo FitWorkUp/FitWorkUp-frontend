@@ -88,9 +88,10 @@ fun NavGraph(sessionManager: SessionManager) {
         }
 
         composable(Routes.ONBOARDING) {
-            OnboardingScreen(onFinishOnboarding = {
-                navController.navigate(Routes.LOGIN) {
+            OnboardingScreen(onFinishOnboarding = { destination ->
+                navController.navigate(destination) {
                     popUpTo(Routes.ONBOARDING) { inclusive = true }
+                    launchSingleTop = true
                 }
             })
         }

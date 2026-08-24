@@ -4,8 +4,10 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.*
@@ -17,6 +19,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.fitworkup.app.domain.model.OnboardingData
 import com.fitworkup.app.domain.model.OnboardingHighlight
 import com.fitworkup.app.domain.model.OnboardingPage
@@ -24,11 +27,18 @@ import kotlinx.coroutines.launch
 
 @Composable
 fun OnboardingScreen(
-    onFinishOnboarding: () -> Unit
+    onFinishOnboarding: (String) -> Unit,
+    viewModel: OnboardingViewModel = hiltViewModel()
 ) {
     val pages = OnboardingData.pages
     val pagerState = rememberPagerState(pageCount = { pages.size })
     val scope = rememberCoroutineScope()
+
+    LaunchedEffect(viewModel) {
+        viewModel.destination.collect { destination ->
+            onFinishOnboarding(destination)
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -44,7 +54,7 @@ fun OnboardingScreen(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.End
         ) {
-            TextButton(onClick = onFinishOnboarding) {
+            TextButton(onClick = viewModel::completeOnboarding) {
                 Text(
                     text = "PULAR",
                     fontWeight = FontWeight.Bold,
@@ -90,7 +100,7 @@ fun OnboardingScreen(
                         pagerState.animateScrollToPage(pagerState.currentPage + 1)
                     }
                 } else {
-                    onFinishOnboarding()
+                    viewModel.completeOnboarding()
                 }
             },
             modifier = Modifier
@@ -115,7 +125,8 @@ private fun OnboardingPageContent(page: OnboardingPage) {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(horizontal = 8.dp),
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 8.dp, vertical = 8.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {

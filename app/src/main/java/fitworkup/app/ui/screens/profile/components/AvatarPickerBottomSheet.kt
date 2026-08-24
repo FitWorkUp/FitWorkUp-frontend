@@ -58,7 +58,7 @@ val availableAvatars = listOf(
 fun avatarDrawable(avatarKey: String?): Int = availableAvatars
     .firstOrNull { it.key.equals(avatarKey, ignoreCase = true) }
     ?.drawableRes
-    ?: R.drawable.iconman1
+    ?: R.drawable.iconman1_transparent
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

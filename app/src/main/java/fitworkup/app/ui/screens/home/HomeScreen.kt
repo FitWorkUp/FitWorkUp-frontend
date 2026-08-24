@@ -83,7 +83,8 @@ fun HomeScreen(
             when (selectedTab) {
                 0 -> WorkoutTabContent(
                     homeUiState = homeUiState,
-                    onStartWorkout = onStartWorkoutClick
+                    onStartWorkout = onStartWorkoutClick,
+                    onWeeklyGoalChanged = viewModel::updateWeeklyGoal
                 )
                 1 -> RankingTabRoute()
                 2 -> StorePoints()

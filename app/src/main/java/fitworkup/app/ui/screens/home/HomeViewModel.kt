@@ -4,8 +4,10 @@ import android.location.Location
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.fitworkup.app.data.remote.dto.DailySummaryResponse
+import com.fitworkup.app.data.preferences.WeeklyGoalPreferences
 import com.fitworkup.app.domain.repository.ActivityRepository
 import com.fitworkup.app.data.repository.ProfileRepository
+import com.fitworkup.app.domain.weeklygoal.countWeeklyActiveDays
 import com.fitworkup.app.util.toLatLngList
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.time.LocalDate
@@ -21,7 +23,8 @@ import kotlinx.coroutines.launch
 @HiltViewModel
 class HomeViewModel @Inject constructor(
     private val activityRepository: ActivityRepository,
-    private val profileRepository: ProfileRepository
+    private val profileRepository: ProfileRepository,
+    private val weeklyGoalPreferences: WeeklyGoalPreferences
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<HomeUiState>(HomeUiState())
@@ -29,8 +32,22 @@ class HomeViewModel @Inject constructor(
 
     init {
         observeLocalActivities()
+        observeWeeklyGoal()
         loadUserProfile()
         loadTodaySummary()
+    }
+
+    private fun observeWeeklyGoal() {
+        viewModelScope.launch {
+            weeklyGoalPreferences.settings.collectLatest { settings ->
+                _uiState.update {
+                    it.copy(
+                        weeklyGoalEnabled = settings.enabled,
+                        weeklyGoalDays = settings.targetDays
+                    )
+                }
+            }
+        }
     }
 
     fun loadUserProfile() {
@@ -54,16 +71,24 @@ class HomeViewModel @Inject constructor(
 
                 val calculatedSteps = todayActivities.sumOf { it.steps }
                 val calculatedDistance = todayActivities.sumOf { it.distanceKm }
+                val activeDays = countWeeklyActiveDays(activities, today)
 
                 _uiState.update { currentState ->
                     currentState.copy(
                         userActivities = activities,
+                        weeklyActiveDays = activeDays,
                         stepsToday = if (calculatedSteps > 0) calculatedSteps else currentState.stepsToday,
                         distanceKmToday = if (calculatedDistance > 0.0) calculatedDistance else currentState.distanceKmToday
                     )
                 }
                 loadTodaySummary()
             }
+        }
+    }
+
+    fun updateWeeklyGoal(enabled: Boolean, targetDays: Int) {
+        viewModelScope.launch {
+            weeklyGoalPreferences.update(enabled, targetDays)
         }
     }
 
@@ -103,4 +128,5 @@ class HomeViewModel @Inject constructor(
             )
         }
     }
+
 }

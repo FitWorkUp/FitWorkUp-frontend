@@ -1,0 +1,32 @@
+\begin{tikzpicture}[
+    font=\small,
+    node distance=0.9cm and 1.2cm,
+    bloco/.style={draw, rounded corners, align=center, minimum height=1.05cm, minimum width=3.3cm, fill=blue!6},
+    externo/.style={draw, dashed, rounded corners, align=center, minimum height=0.9cm, minimum width=3.0cm, fill=gray!8},
+    fluxo/.style={->, >=stealth, thick}
+]
+    \node[bloco] (ui) {Aplicativo Android\\Kotlin + Jetpack Compose};
+    \node[bloco, below=of ui] (vm) {Apresentação e estado\\Telas + ViewModels};
+    \node[bloco, below=of vm] (domain) {Domínio\\Casos de uso + Repositórios};
+    \node[bloco, below left=of domain] (local) {Persistência local\\Room + DataStore};
+    \node[bloco, below right=of domain] (sensors) {Coleta de atividade\\GPS + sensores de movimento};
+
+    \node[bloco, right=3.0cm of vm] (api) {API REST\\Spring Boot + Spring Security};
+    \node[bloco, below=of api] (services) {Serviços de negócio\\atividade, gamificação, loja,\\ranking, amizades e grupos};
+    \node[bloco, below=of services] (jpa) {Persistência no servidor\\Spring Data JPA};
+    \node[bloco, below=of jpa] (db) {PostgreSQL};
+
+    \node[externo, above=of api] (maps) {Google Maps e serviços\\de localização};
+    \node[externo, right=of services] (mail) {Servidor de e-mail\\recuperação de senha};
+
+    \draw[fluxo] (ui) -- (vm);
+    \draw[fluxo] (vm) -- (domain);
+    \draw[fluxo] (domain) -- (local);
+    \draw[fluxo] (domain) -- (sensors);
+    \draw[fluxo,<->] (vm) -- node[above, align=center]{HTTPS/JSON\\JWT} (api);
+    \draw[fluxo] (api) -- (services);
+    \draw[fluxo] (services) -- (jpa);
+    \draw[fluxo] (jpa) -- (db);
+    \draw[fluxo,<->] (sensors) -- (maps);
+    \draw[fluxo,<->] (services) -- (mail);
+\end{tikzpicture}
