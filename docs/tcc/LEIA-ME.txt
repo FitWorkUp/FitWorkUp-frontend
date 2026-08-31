@@ -1,0 +1,37 @@
+ARQUIVOS PARA O OVERLEAF
+
+1. Copie FitWorkUp_revisado.tex para:
+   Capitulos/FitWorkUp.tex
+
+2. Copie os três arquivos da pasta diagramas para:
+   Capitulos/diagramas/
+
+3. Confirme que o preâmbulo do arquivo principal contém:
+   \usepackage{graphicx}
+   \usepackage{float}
+   \usepackage{booktabs}
+   \usepackage{longtable}
+   \usepackage{tikz}
+   \usetikzlibrary{shapes.geometric,arrows,positioning}
+
+4. Crie no Overleaf a pasta:
+   Figuras/prints/
+
+5. Adicione capturas reais com estes nomes:
+   login.png
+   inicio.png
+   atividade.png
+   perfil.png
+   ranking.png
+   loja.png
+
+Enquanto as capturas não forem adicionadas, o capítulo compila mostrando
+quadros que indicam os caminhos esperados.
+
+OBSERVAÇÕES ENCONTRADAS NO CÓDIGO
+
+- O ambiente de desenvolvimento da API usa PostgreSQL.
+- O pom.xml ainda contém um driver do SQL Server; remova-o se ele não for usado.
+- O serviço atual de mensagens é baseado em regras. Não descreva Gemini ou
+  Spring AI como implementados enquanto essas dependências e chamadas não
+  estiverem presentes no projeto.

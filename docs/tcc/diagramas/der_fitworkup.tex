@@ -1,0 +1,30 @@
+\begin{tikzpicture}[
+    font=\scriptsize,
+    node distance=0.65cm and 0.75cm,
+    entidade/.style={draw, rounded corners, align=left, text width=3.15cm, inner sep=5pt, fill=blue!5},
+    rel/.style={->, >=stealth, thick}
+]
+    \node[entidade] (user) {\textbf{users}\\\underline{id}, username, email, password, weight\_kg, xp, level, fitcoins, streak, avatar\_key, active};
+    \node[entidade, right=of user] (activity) {\textbf{activities}\\\underline{id}, user\_id, type, distance\_km, duration\_seconds, steps, avg\_speed, is\_valid, risk\_score, timestamp};
+    \node[entidade, below=of user] (friendship) {\textbf{tb\_friendships}\\\underline{id}, user\_id, friend\_id, status, created\_at};
+    \node[entidade, below=of activity] (group) {\textbf{group\_sessions}\\\underline{id}, host\_user\_id, code, name, target\_distance\_km, status, created\_at};
+    \node[entidade, right=of group] (participant) {\textbf{group\_participants}\\\underline{id}, group\_session\_id, user\_id, ready, joined\_at};
+
+    \node[entidade, below=of friendship] (ua) {\textbf{tb\_user\_achievements}\\\underline{id}, user\_id, achievement\_id, unlocked\_at};
+    \node[entidade, left=of ua] (achievement) {\textbf{tb\_achievements}\\\underline{id}, name, description, criteria\_type, target\_value, xp\_reward, fitcoins\_reward};
+    \node[entidade, below=of group] (inventory) {\textbf{inventory\_items}\\\underline{id}, user\_id, store\_item\_id, quantity, is\_equipped};
+    \node[entidade, right=of inventory] (store) {\textbf{store\_items}\\\underline{id}, name, price, category, effect\_type, multiplier, duration\_minutes, active};
+    \node[entidade, below=of inventory] (boost) {\textbf{user\_boosts}\\\underline{id}, user\_id, store\_item\_id, effect\_type, multiplier, starts\_at, expires\_at};
+
+    \draw[rel] (user) -- node[above]{1:N} (activity);
+    \draw[rel] (user) -- node[left]{1:N} (friendship);
+    \draw[rel] (user) -- node[above, sloped]{1:N} (group);
+    \draw[rel] (group) -- node[above]{1:N} (participant);
+    \draw[rel] (user) -- node[above, sloped]{1:N} (participant);
+    \draw[rel] (user) -- node[above, sloped]{1:N} (ua);
+    \draw[rel] (achievement) -- node[above]{1:N} (ua);
+    \draw[rel] (user) -- node[above, sloped]{1:N} (inventory);
+    \draw[rel] (store) -- node[above]{1:N} (inventory);
+    \draw[rel] (user) -- node[left]{1:N} (boost);
+    \draw[rel] (store) -- node[right]{1:N} (boost);
+\end{tikzpicture}

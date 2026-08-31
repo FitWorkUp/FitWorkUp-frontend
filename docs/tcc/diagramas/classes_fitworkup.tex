@@ -1,0 +1,34 @@
+\begin{tikzpicture}[
+    font=\scriptsize,
+    node distance=0.7cm and 0.9cm,
+    classe/.style={draw, rounded corners, align=left, text width=3.2cm, inner sep=5pt, fill=blue!5},
+    interface/.style={draw, dashed, rounded corners, align=left, text width=3.2cm, inner sep=5pt, fill=gray!7},
+    dep/.style={->, >=stealth, thick},
+    impl/.style={->, >=stealth, dashed, thick}
+]
+    \node[classe] (screen) {\textbf{WorkoutScreen}\\exibe estado do treino\\envia ações do usuário};
+    \node[classe, below=of screen] (vm) {\textbf{WorkoutViewModel}\\coordena o estado\\inicia e finaliza atividade};
+    \node[interface, below left=of vm] (repoi) {\textit{ActivityRepository}\\registrar atividade\\consultar histórico};
+    \node[classe, below=of repoi] (repo) {\textbf{ActivityRepositoryImpl}\\integra API e base local};
+    \node[classe, below right=of vm] (sensor) {\textbf{WorkoutSensorService}\\coleta localização e movimento\\mantém execução em primeiro plano};
+    \node[classe, below=of sensor] (evaluator) {\textbf{StepAntiFraudEvaluator}\\avalia passos aceitos/retidos\\produz risco e justificativas};
+
+    \node[classe, right=3.0cm of vm] (controller) {\textbf{ActivityController}\\recebe e valida requisições\\retorna o estado da atividade};
+    \node[classe, below=of controller] (activityservice) {\textbf{ActivityService}\\orquestra persistência, validação,\\recompensas e conquistas};
+    \node[classe, below left=of activityservice] (fraud) {\textbf{FraudDetectionService}\\classifica a atividade em\\aprovada, revisão ou rejeitada};
+    \node[classe, below right=of activityservice] (game) {\textbf{GamificationService}\\atribui XP e FitCoins\\aplica multiplicadores e níveis};
+    \node[interface, below=of activityservice] (jparepo) {\textit{ActivityRepository (JPA)}\\save, consultas diárias e histórico};
+    \node[classe, below=of jparepo] (entity) {\textbf{Activity}\\distância, passos, velocidade,\\validade, risco e data};
+
+    \draw[dep] (screen) -- (vm);
+    \draw[dep] (vm) -- (repoi);
+    \draw[impl] (repo) -- (repoi);
+    \draw[dep] (vm) -- (sensor);
+    \draw[dep] (sensor) -- (evaluator);
+    \draw[dep] (repo) -- node[above, align=center]{REST/JSON} (controller);
+    \draw[dep] (controller) -- (activityservice);
+    \draw[dep] (activityservice) -- (fraud);
+    \draw[dep] (activityservice) -- (game);
+    \draw[dep] (activityservice) -- (jparepo);
+    \draw[dep] (jparepo) -- (entity);
+\end{tikzpicture}

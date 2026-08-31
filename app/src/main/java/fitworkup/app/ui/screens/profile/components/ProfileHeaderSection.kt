@@ -79,6 +79,7 @@ fun ProfileHeaderInfo(
 ) {
     val avatarBorderColor = when {
         profile?.avatarBorder?.contains("Rubi", ignoreCase = true) == true -> Color(0xFFD32F2F)
+        profile?.avatarBorder?.contains("Ametista", ignoreCase = true) == true -> Color(0xFF9C27B0)
         profile?.avatarBorder?.contains("Esmeralda", ignoreCase = true) == true -> Color(0xFF2E7D32)
         profile?.avatarBorder?.contains("Lendária", ignoreCase = true) == true -> Color(0xFFFFB300)
         else -> MaterialTheme.colorScheme.primary
@@ -89,7 +90,7 @@ fun ProfileHeaderInfo(
             Box(
                 modifier = Modifier
                     .size(100.dp)
-                    .border(4.dp, avatarBorderColor, CircleShape)
+                    .border(8.dp, avatarBorderColor, CircleShape)
                     .padding(6.dp)
                     .then(
                         if (onAvatarClick != null) Modifier.clickable(onClick = onAvatarClick)
@@ -133,7 +134,13 @@ fun ProfileHeaderInfo(
             Box(
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
+                    .offset(x = 26.dp, y = 1.dp)
                     .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(8.dp))
+                    .border(
+                        width = 1.dp,
+                        color = Color.White,
+                        shape = RoundedCornerShape(8.dp)
+                    )
                     .padding(horizontal = 6.dp, vertical = 2.dp)
             ) {
                 Text("LVL ${profile?.level ?: 1}", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.White)
@@ -159,7 +166,7 @@ fun ProfileXpProgressCard(profile: UserProfile?) {
         Spacer(modifier = Modifier.height(6.dp))
         LinearProgressIndicator(
             progress = { progressValue },
-            modifier = Modifier.fillMaxWidth().height(8.dp).clip(RoundedCornerShape(4.dp)),
+            modifier = Modifier.fillMaxWidth().height(12.dp).clip(RoundedCornerShape(4.dp)),
             color = MaterialTheme.colorScheme.primary,
             trackColor = MaterialTheme.colorScheme.surfaceVariant
         )

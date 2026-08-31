@@ -24,4 +24,7 @@ interface ActivityDao {
 
     @Query("SELECT * FROM activities ORDER BY timestamp DESC")
     suspend fun getAllActivities(): List<ActivityEntity>
+
+    @Query("SELECT MAX(timestamp) FROM activities")
+    suspend fun getLatestActivityTimestamp(): Long?
 }

@@ -15,7 +15,11 @@ val properties = Properties().apply {
     }
 }
 
-val apiBaseUrl = properties.getProperty("API_BASE_URL", "http://10.0.0.101:8083/")
+val apiBaseUrl = properties
+    .getProperty(
+        "API_BASE_URL",
+        "https://fitworkup-api.onrender.com/"
+    )
     .trim()
     .removeSurrounding("\"")
     .let { if (it.endsWith("/")) it else "$it/" }

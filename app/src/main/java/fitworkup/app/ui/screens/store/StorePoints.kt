@@ -1,5 +1,7 @@
 package com.fitworkup.app.ui.screens.store
 
+import androidx.annotation.DrawableRes
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -43,19 +45,26 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.fitworkup.app.R
 import com.fitworkup.app.domain.model.StoreItem
 import com.fitworkup.app.ui.components.RemoteContentError
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import java.util.Locale
 
 @Composable
 fun StorePoints(viewModel: StoreViewModel = hiltViewModel()) {
@@ -195,14 +204,7 @@ private fun StoreItemCard(
             modifier = Modifier.fillMaxSize().padding(14.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Box(
-                modifier = Modifier
-                    .size(54.dp)
-                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f), CircleShape),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(text = item.iconEmoji, fontSize = 27.sp)
-            }
+            StoreItemVisual(item = item, size = 54.dp, emojiSize = 27.sp)
 
             Spacer(Modifier.height(10.dp))
             Text(
@@ -272,14 +274,7 @@ private fun StorePurchaseDialog(
     AlertDialog(
         onDismissRequest = onDismiss,
         icon = {
-            Box(
-                modifier = Modifier
-                    .size(62.dp)
-                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f), CircleShape),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(text = item.iconEmoji, fontSize = 31.sp)
-            }
+            StoreItemVisual(item = item, size = 62.dp, emojiSize = 31.sp)
         },
         title = {
             Text(
@@ -431,3 +426,51 @@ private fun formatActiveUntil(value: String): String = runCatching {
     val localTime = Instant.parse(value).atZone(ZoneId.systemDefault()).format(formatter)
     "Ativo até $localTime"
 }.getOrDefault("Bônus ativo")
+
+@Composable
+private fun StoreItemVisual(item: StoreItem, size: Dp, emojiSize: TextUnit) {
+    val imageResource = storeItemImageResource(item)
+    val containerSize = if (imageResource != null) size * 1.25f else size
+    Box(
+        modifier = Modifier
+            .size(containerSize)
+            .then(
+                if (imageResource == null) {
+                    Modifier.background(
+                        MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
+                        CircleShape
+                    )
+                } else {
+                    Modifier
+                }
+            ),
+        contentAlignment = Alignment.Center
+    ) {
+        if (imageResource != null) {
+            Image(
+                painter = painterResource(imageResource),
+                contentDescription = item.name,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .scale(1.18f)
+                    .clip(CircleShape),
+                contentScale = ContentScale.Fit
+            )
+        } else {
+            Text(text = item.iconEmoji, fontSize = emojiSize)
+        }
+    }
+}
+
+@DrawableRes
+private fun storeItemImageResource(item: StoreItem): Int? {
+    if (!item.category.equals("AVATAR_FRAME", ignoreCase = true)) return null
+
+    return when (item.name.lowercase(Locale.ROOT)) {
+        "moldura rubi" -> R.drawable.store_frame_red
+        "moldura ametista" -> R.drawable.store_frame_purple
+        "moldura esmeralda" -> R.drawable.store_frame_green
+        "moldura lendária" -> R.drawable.store_frame_gold
+        else -> null
+    }
+}

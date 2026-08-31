@@ -1,0 +1,172 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\xchapter{Desenvolvimento do FitWorkUp}{}
+\label{cap:fitworkup}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+Este capítulo descreve o artefato desenvolvido, suas funcionalidades, as tecnologias empregadas, a arquitetura adotada e os principais elementos de modelagem. A descrição foi elaborada a partir da implementação do aplicativo Android e da API, de modo que recursos ainda não concluídos sejam tratados como limitações ou trabalhos futuros.
+
+\section{Visão Geral da Solução}
+\label{sec:fitworkup_visao_geral}
+
+O \textit{FitWorkUp} é composto por um aplicativo Android, uma API REST e um banco de dados relacional. O aplicativo permite registrar caminhadas e corridas, acompanhar métricas, consultar o histórico, visualizar a progressão do perfil e acessar recursos sociais e de gamificação. A API centraliza autenticação, regras de negócio, persistência, validação das atividades e concessão de recompensas.
+
+Durante uma atividade, o cliente coleta informações de localização e movimento. Ao término, envia à API dados como distância, quantidade de passos, velocidade média e indicadores produzidos pela análise local. O servidor executa verificações adicionais e classifica o registro como aprovado, em análise ou rejeitado. Somente atividades aprovadas geram experiência e \textit{FitCoins}. Esse processo busca reduzir registros inconsistentes, mas não garante a detecção de toda forma de manipulação.
+
+\section{Funcionalidades Implementadas}
+\label{sec:fitworkup_funcionalidades}
+
+As funcionalidades foram agrupadas de acordo com a responsabilidade de cada módulo.
+
+\subsection{Autenticação e Sessão}
+
+O módulo de autenticação permite cadastrar usuários, autenticar credenciais, manter uma sessão por token JWT e solicitar recuperação de senha. O aplicativo armazena as informações necessárias à sessão com o \textit{DataStore}; nas rotas protegidas, o token é acrescentado às requisições pelo cliente HTTP. A API utiliza \textit{Spring Security} para validar o token e identificar o usuário autenticado.
+
+\subsection{Registro de Atividades}
+
+O usuário pode iniciar uma atividade individual ou participar de uma sessão em grupo. Durante o treino, a interface apresenta métricas como duração, distância, passos e percurso no mapa. O \texttt{WorkoutSensorService} mantém a coleta enquanto a atividade está em andamento, inclusive quando a tela deixa de ser o elemento visível do aplicativo.
+
+A análise local produz passos aceitos, passos retidos, pontuação de risco e justificativas de suspeita. No servidor, o \texttt{FraudDetectionService} verifica a presença dos dados obrigatórios, a plausibilidade da velocidade e a relação entre passos e distância. Dependendo do resultado, o registro recebe o estado aprovado, em análise ou rejeitado.
+
+\subsection{Perfil, Progresso e Conquistas}
+
+O perfil reúne nível, experiência, sequência de uso, distância acumulada, avatar, título e conquistas. Atividades aprovadas concedem experiência e moedas virtuais conforme as regras implementadas no \texttt{ActivityService}. O \texttt{GamificationService} aplica multiplicadores ativos e atualiza o nível quando a experiência acumulada alcança o limite definido para a progressão.
+
+\subsection{Ranking e Recursos Sociais}
+
+O ranking semanal apresenta usuários ordenados pelo desempenho considerado pela API. O módulo social permite pesquisar perfis, enviar e responder solicitações de amizade, consultar amigos e visualizar o perfil público de usuários com vínculo aceito. Também existem sessões de atividade em grupo, com criação de sala, entrada por código, indicação de prontidão e início pelo anfitrião.
+
+\subsection{Loja, Inventário e Efeitos Temporários}
+
+A loja apresenta itens cadastrados no servidor e permite adquiri-los com \textit{FitCoins}. O inventário registra quantidade e estado de equipamento. Alguns itens produzem efeitos temporários, como multiplicadores de experiência ou moedas, representados no servidor pela entidade \texttt{UserBoost}. A compra verifica o saldo e é processada na camada de serviço.
+
+\subsection{Resumo Diário e Mensagens de Incentivo}
+
+O resumo diário agrega passos, distância e estimativa de calorias das atividades válidas. O serviço atual de mensagens de incentivo utiliza regras baseadas na quantidade diária de passos. Embora versões anteriores da documentação mencionassem \textit{Spring AI} e Google Gemini, essa integração não está presente nas dependências atuais; portanto, não é descrita como funcionalidade implementada.
+
+\section{Tecnologias Utilizadas}
+\label{sec:fitworkup_tecnologias}
+
+A Tabela~\ref{tab:tecnologias_fitworkup} apresenta as tecnologias identificadas na implementação e o papel de cada uma.
+
+\begin{longtable}{p{0.20\textwidth}p{0.25\textwidth}p{0.46\textwidth}}
+\caption{Tecnologias utilizadas no FitWorkUp}\label{tab:tecnologias_fitworkup}\\
+\toprule
+\textbf{Camada} & \textbf{Tecnologia} & \textbf{Uso no projeto} \\
+\midrule
+\endfirsthead
+\toprule
+\textbf{Camada} & \textbf{Tecnologia} & \textbf{Uso no projeto} \\
+\midrule
+\endhead
+\bottomrule
+\endfoot
+Aplicativo & Kotlin e Android SDK & Implementação do cliente Android, serviços, acesso aos sensores e regras executadas no dispositivo. \\
+Interface & Jetpack Compose e Material 3 & Construção declarativa das telas, componentes e estados visuais. \\
+Arquitetura móvel & ViewModel, Hilt e Navigation Compose & Gerenciamento de estado, injeção de dependências e navegação entre telas. \\
+Persistência local & Room e DataStore & Armazenamento local de atividades e preferências relacionadas à sessão. \\
+Processamento em segundo plano & Foreground Service e WorkManager & Coleta durante o treino e execução de tarefas de sincronização. \\
+Localização e mapas & Fused Location Provider e Maps Compose & Obtenção de localização e apresentação do percurso. \\
+Comunicação & Retrofit, OkHttp e Gson & Consumo da API REST, interceptação das requisições e conversão de JSON. \\
+Servidor & Java 21 e Spring Boot 3.3.5 & Implementação da API e inicialização dos componentes do servidor. \\
+Segurança & Spring Security, JWT e BCrypt & Autenticação, autorização de rotas e armazenamento protegido das senhas. \\
+Persistência remota & Spring Data JPA e PostgreSQL & Mapeamento objeto-relacional e armazenamento dos dados da aplicação. \\
+Documentação da API & Springdoc OpenAPI & Exposição da especificação e da interface de consulta dos endpoints. \\
+\end{longtable}
+
+\section{Arquitetura do Sistema}
+\label{sec:fitworkup_arquitetura}
+
+O sistema segue uma arquitetura cliente-servidor. No aplicativo, a interface em Compose observa estados mantidos pelos \textit{ViewModels}. As abstrações de repositório separam as regras usadas pela apresentação dos detalhes de acesso à API e à base local. No servidor, controladores recebem as requisições HTTP e delegam o processamento a serviços, que utilizam repositórios JPA para acessar o PostgreSQL.
+
+\begin{figure}[H]
+    \centering
+    \resizebox{\textwidth}{!}{\input{Capitulos/diagramas/arquitetura_fitworkup}}
+    \caption{Arquitetura do ecossistema FitWorkUp}
+    \label{fig:arquitetura_fitworkup}
+\end{figure}
+
+A comunicação entre o aplicativo e a API ocorre por HTTP com dados em JSON. Nas operações autenticadas, o JWT identifica a sessão. A coleta de sensores permanece no dispositivo; apenas as métricas e os indicadores necessários ao registro são enviados ao servidor. Serviços externos são empregados para localização, mapas e envio de mensagens de recuperação de senha.
+
+\section{Modelagem de Classes}
+\label{sec:fitworkup_classes}
+
+A Figura~\ref{fig:classes_fitworkup} apresenta um recorte das classes envolvidas no registro de uma atividade. O recorte foi escolhido por representar o fluxo técnico central do sistema e por evidenciar a divisão entre cliente e servidor.
+
+\begin{figure}[H]
+    \centering
+    \resizebox{\textwidth}{!}{\input{Capitulos/diagramas/classes_fitworkup}}
+    \caption{Diagrama de classes simplificado do registro de atividades}
+    \label{fig:classes_fitworkup}
+\end{figure}
+
+No cliente, \texttt{WorkoutScreen} apresenta o estado mantido por \texttt{WorkoutViewModel}. O serviço de sensores coleta os dados e o avaliador local produz indicadores de risco. A implementação do repositório envia o registro para o controlador da API. No servidor, \texttt{ActivityService} coordena a validação, a persistência e a concessão de recompensas, delegando responsabilidades específicas aos serviços de detecção e gamificação.
+
+\section{Modelagem do Banco de Dados}
+\label{sec:fitworkup_banco}
+
+O modelo remoto contém entidades para usuários, atividades, amizades, conquistas, sessões em grupo, itens da loja, inventário e efeitos temporários. A Figura~\ref{fig:der_fitworkup} apresenta os relacionamentos mais relevantes. Campos secundários foram omitidos para preservar a legibilidade.
+
+\begin{figure}[H]
+    \centering
+    \resizebox{\textwidth}{!}{\input{Capitulos/diagramas/der_fitworkup}}
+    \caption{Diagrama entidade-relacionamento simplificado do FitWorkUp}
+    \label{fig:der_fitworkup}
+\end{figure}
+
+A entidade \texttt{User} é central no modelo. Uma pessoa pode possuir várias atividades, amizades, conquistas, participações em grupos e entradas de inventário. \texttt{UserAchievement} resolve a associação entre usuários e conquistas; \texttt{InventoryItem} associa usuários e produtos; e \texttt{GroupParticipant} representa a participação em uma sessão coletiva. Os efeitos temporários adquiridos na loja são registrados separadamente em \texttt{UserBoost}.
+
+\section{Interfaces e Fluxos do Aplicativo}
+\label{sec:fitworkup_interfaces}
+
+Esta seção deve utilizar capturas reais da versão avaliada do aplicativo. Para evitar divergência entre texto e implementação, recomenda-se capturar todas as telas no mesmo dispositivo, resolução e tema. Os blocos abaixo compilam mesmo antes da inclusão das imagens.
+
+\providecommand{\telaFitWorkUp}[4]{%
+\begin{figure}[H]
+    \centering
+    \IfFileExists{#1}{%
+        \includegraphics[width=#2\textwidth,keepaspectratio]{#1}%
+    }{%
+        \fbox{\parbox[c][6cm][c]{0.72\textwidth}{\centering
+        Inserir captura real em: \\ \texttt{#1}}}%
+    }
+    \caption{#3}
+    \label{#4}
+\end{figure}}
+
+\subsection{Autenticação e Recuperação de Senha}
+
+A tela de autenticação recebe as credenciais e direciona o usuário à área principal quando a API confirma a sessão. O fluxo de recuperação solicita e valida o código enviado ao endereço cadastrado antes de permitir a alteração da senha.
+
+\telaFitWorkUp{Figuras/prints/login.png}{0.32}{Tela de autenticação}{fig:tela_login}
+
+\subsection{Tela Inicial e Resumo de Progresso}
+
+A tela inicial concentra o acesso aos módulos e apresenta dados resumidos do usuário. A partir dela, é possível iniciar uma atividade individual, criar ou entrar em uma sessão em grupo e consultar perfil, ranking e loja.
+
+\telaFitWorkUp{Figuras/prints/inicio.png}{0.32}{Tela inicial do FitWorkUp}{fig:tela_inicio}
+
+\subsection{Registro de Atividade}
+
+Durante a atividade, a interface exibe as métricas registradas e o percurso. Os controles permitem iniciar, pausar, retomar e finalizar o treino. Ao concluir, os dados são encaminhados para avaliação e persistência.
+
+\telaFitWorkUp{Figuras/prints/atividade.png}{0.32}{Acompanhamento de uma atividade}{fig:tela_atividade}
+
+\subsection{Perfil, Ranking e Loja}
+
+O perfil apresenta progressão e conquistas; o ranking organiza o desempenho semanal; e a loja permite consultar itens, saldo e inventário. Recomenda-se inserir uma captura de cada módulo ou uma composição com três imagens alinhadas.
+
+\telaFitWorkUp{Figuras/prints/perfil.png}{0.32}{Perfil e progressão do usuário}{fig:tela_perfil}
+\telaFitWorkUp{Figuras/prints/ranking.png}{0.32}{Ranking semanal}{fig:tela_ranking}
+\telaFitWorkUp{Figuras/prints/loja.png}{0.32}{Loja virtual e itens disponíveis}{fig:tela_loja}
+
+\section{Limitações da Implementação}
+\label{sec:fitworkup_limitacoes}
+
+Na versão examinada, o mecanismo de validação utiliza regras e limiares definidos no cliente e no servidor; seu desempenho precisa ser medido em cenários controlados antes de qualquer afirmação de eficácia. As métricas produzidas pelos sensores variam conforme dispositivo, posicionamento, qualidade do sinal e permissões do sistema. A estimativa de calorias não possui finalidade clínica.
+
+Também foi identificada uma dependência residual do driver do SQL Server no arquivo de construção da API, embora o perfil de desenvolvimento esteja configurado para PostgreSQL. Essa dependência deve ser removida para evitar ambiguidade na documentação. Por fim, o serviço de mensagens de incentivo é baseado em regras; a integração com Google Gemini e \textit{Spring AI} não está implementada na versão analisada.
+
+\section{Considerações Finais do Capítulo}
+\label{sec:fitworkup_consideracoes}
+
+O capítulo apresentou o FitWorkUp a partir de sua implementação, descrevendo funcionalidades, tecnologias, arquitetura, classes, banco de dados e interfaces. Essa documentação fornece a base para o capítulo de avaliação, no qual os requisitos e os componentes centrais devem ser confrontados com casos de teste e cenários controlados.

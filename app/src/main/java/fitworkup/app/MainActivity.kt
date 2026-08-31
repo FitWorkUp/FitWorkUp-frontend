@@ -16,6 +16,7 @@ import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.fitworkup.app.data.connectivity.ConnectivityStatus
 import com.fitworkup.app.data.connectivity.NetworkMonitor
+import com.fitworkup.app.data.preferences.ThemePreferences
 import com.fitworkup.app.data.session.SessionManager
 import com.fitworkup.app.navigation.NavGraph
 import com.fitworkup.app.ui.components.OfflineBanner
@@ -31,6 +32,9 @@ class MainActivity : ComponentActivity() {
     @Inject
     lateinit var sessionManager: SessionManager
 
+    @Inject
+    lateinit var themePreferences: ThemePreferences
+
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen()
 
@@ -39,8 +43,11 @@ class MainActivity : ComponentActivity() {
             val connectivityStatus by networkMonitor.status.collectAsStateWithLifecycle(
                 initialValue = ConnectivityStatus.CHECKING
             )
+            val darkThemeEnabled by themePreferences.darkThemeEnabled.collectAsStateWithLifecycle(
+                initialValue = false
+            )
 
-            FitWorkUpTheme {
+            FitWorkUpTheme(darkTheme = darkThemeEnabled) {
                 Box(modifier = Modifier.fillMaxSize()) {
                     NavGraph(sessionManager = sessionManager)
 
