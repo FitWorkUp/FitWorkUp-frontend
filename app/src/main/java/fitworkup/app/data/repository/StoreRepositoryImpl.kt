@@ -4,6 +4,7 @@ import com.fitworkup.app.data.remote.api.StoreApiService
 import com.fitworkup.app.data.remote.api.UserApiService
 import com.fitworkup.app.data.remote.dto.InventoryItemDto
 import com.fitworkup.app.domain.model.StoreItem
+import com.fitworkup.app.domain.model.ActiveModifier
 import com.fitworkup.app.domain.model.StorePurchase
 import com.fitworkup.app.domain.model.StoreSnapshot
 import com.fitworkup.app.domain.repository.StoreRepository
@@ -62,6 +63,16 @@ class StoreRepositoryImpl @Inject constructor(
             repeatable = response.repeatable,
             boostExpiresAt = response.boostExpiresAt
         )
+    }
+
+    override suspend fun getActiveModifiers(): Result<List<ActiveModifier>> = runCatching {
+        storeApiService.getActiveBoosts().requireBody().map { boost ->
+            ActiveModifier(
+                effectType = boost.effectType,
+                multiplier = boost.multiplier,
+                expiresAt = boost.expiresAt
+            )
+        }
     }
 
     override suspend fun equip(inventoryItemId: Long): Result<Unit> = runCatching {

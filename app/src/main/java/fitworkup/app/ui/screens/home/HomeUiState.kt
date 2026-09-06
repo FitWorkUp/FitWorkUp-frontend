@@ -1,6 +1,7 @@
 package com.fitworkup.app.ui.screens.home
 
 import com.fitworkup.app.domain.model.UserActivityItem
+import com.fitworkup.app.domain.model.ActiveModifier
 import com.google.android.gms.maps.model.LatLng
 
 data class HomeUiState(
@@ -15,6 +16,7 @@ data class HomeUiState(
     val fitcoins: Int = 0,
     val xp: Int = 0,
     val level: Int = 0,
+    val activeModifiers: List<ActiveModifier> = emptyList(),
     val userActivities: List<UserActivityItem> = emptyList(),
     val lastWorkoutPath: List<LatLng> = emptyList(),
     val errorMessage: String? = null

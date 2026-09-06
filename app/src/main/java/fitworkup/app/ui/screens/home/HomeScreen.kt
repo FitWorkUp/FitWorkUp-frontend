@@ -32,6 +32,7 @@ fun HomeScreen(
         if (selectedTab == 0) {
             viewModel.loadUserProfile()
             viewModel.loadTodaySummary()
+            viewModel.loadActiveModifiers()
         }
     }
 

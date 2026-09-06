@@ -9,6 +9,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.DirectionsRun
+import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -26,8 +27,12 @@ import com.fitworkup.app.ui.components.MonthlyProgressCard
 import com.fitworkup.app.ui.screens.dashboard.DashboardViewModel
 import com.fitworkup.app.ui.screens.home.HomeUiState
 import com.fitworkup.app.ui.screens.profile.components.avatarDrawable
+import com.fitworkup.app.domain.model.ActiveModifier
 import com.google.android.gms.maps.model.LatLng
 import java.util.Locale
+import java.time.Duration
+import java.time.Instant
+import kotlinx.coroutines.delay
 
 /**
  * Sobrecarga principal consumida pelo HomeScreen.
@@ -59,6 +64,7 @@ fun WorkoutTabContent(
         weeklyActiveDays = homeUiState.weeklyActiveDays,
         weeklyGoalDays = homeUiState.weeklyGoalDays,
         routePoints = effectiveRoutePoints,
+        activeModifiers = homeUiState.activeModifiers,
         onStartWorkout = onStartWorkout,
         onWeeklyGoalChanged = onWeeklyGoalChanged,
         modifier = modifier,
@@ -81,6 +87,7 @@ fun WorkoutTabContent(
     weeklyActiveDays: Int = 0,
     weeklyGoalDays: Int = 3,
     routePoints: List<LatLng> = emptyList(),
+    activeModifiers: List<ActiveModifier> = emptyList(),
     onStartWorkout: (WorkoutSetupAction) -> Unit,
     onWeeklyGoalChanged: (enabled: Boolean, targetDays: Int) -> Unit = { _, _ -> },
     modifier: Modifier = Modifier,
@@ -148,6 +155,8 @@ fun WorkoutTabContent(
                     )
                 }
             }
+
+            ActiveModifiersCard(activeModifiers)
 
             // 2. ANEL DE META DIÁRIA (PASSOS)
             Box(
@@ -307,6 +316,69 @@ fun WorkoutTabContent(
             )
         }
     }
+}
+
+@Composable
+private fun ActiveModifiersCard(modifiers: List<ActiveModifier>) {
+    var now by remember { mutableStateOf(Instant.now()) }
+
+    LaunchedEffect(modifiers) {
+        while (true) {
+            now = Instant.now()
+            delay(1_000L)
+        }
+    }
+
+    val active = modifiers.mapNotNull { modifier ->
+        runCatching { Instant.parse(modifier.expiresAt) }.getOrNull()
+            ?.takeIf { it.isAfter(now) }
+            ?.let { modifier to it }
+    }
+    if (active.isEmpty()) return
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = 16.dp),
+        shape = RoundedCornerShape(14.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Icon(Icons.Default.Bolt, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+            Column {
+                active.forEach { (modifier, expiry) ->
+                    val remaining = Duration.between(now, expiry).seconds.coerceAtLeast(0)
+                    Text(
+                        text = "${modifierLabel(modifier.effectType)} ${modifierMultiplierLabel(modifier.multiplier)} • ${remainingLabel(remaining)}",
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+        }
+    }
+}
+
+private fun modifierLabel(effectType: String): String = when (effectType.uppercase(Locale.ROOT)) {
+    "XP_MULTIPLIER", "XP_BOOST" -> "⚡ XP"
+    "FITCOINS_MULTIPLIER", "FITCOIN_MULTIPLIER", "COINS_MULTIPLIER" -> "🪙 FitCoins"
+    else -> "✨ Bônus"
+}
+
+private fun modifierMultiplierLabel(multiplier: Double): String =
+    if (multiplier % 1.0 == 0.0) "x${multiplier.toInt()}"
+    else "x${String.format(Locale.getDefault(), "%.1f", multiplier)}"
+
+private fun remainingLabel(totalSeconds: Long): String {
+    val hours = totalSeconds / 3_600
+    val minutes = (totalSeconds % 3_600) / 60
+    val seconds = totalSeconds % 60
+    return if (hours > 0) "%02d:%02d:%02d".format(hours, minutes, seconds)
+    else "%02d:%02d".format(minutes, seconds)
 }
 
 @Composable

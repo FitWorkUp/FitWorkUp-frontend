@@ -25,6 +25,8 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
 import com.fitworkup.app.MainActivity
+import com.fitworkup.app.domain.model.ActiveModifier
+import com.fitworkup.app.domain.repository.StoreRepository
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationCallback
 import com.google.android.gms.location.LocationRequest
@@ -40,6 +42,11 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import dagger.hilt.android.AndroidEntryPoint
+import java.time.Duration
+import java.time.Instant
+import java.util.Locale
+import javax.inject.Inject
 
 data class WorkoutState(
     val steps: Int = 0,
@@ -54,7 +61,11 @@ data class WorkoutState(
     val pathPoints: List<Location> = emptyList()
 )
 
+@AndroidEntryPoint
 class WorkoutSensorService : Service(), SensorEventListener {
+
+    @Inject
+    lateinit var storeRepository: StoreRepository
 
     private val binder = LocalBinder()
 
@@ -73,6 +84,7 @@ class WorkoutSensorService : Service(), SensorEventListener {
     private var lastStepDetectedAtMs: Long = 0L
     private var workoutGoalKm: Double? = null
     private var workoutGroupSessionId: Long? = null
+    private var activeModifiers: List<ActiveModifier> = emptyList()
 
     private val serviceScope = CoroutineScope(Dispatchers.Default)
     private var timerJob: Job? = null
@@ -140,6 +152,7 @@ class WorkoutSensorService : Service(), SensorEventListener {
         )
 
         startTimer()
+        loadActiveModifiers()
 
         val notification = buildNotification()
         val serviceType = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
@@ -172,6 +185,16 @@ class WorkoutSensorService : Service(), SensorEventListener {
                 _workoutState.value = _workoutState.value.copy(
                     durationSeconds = _workoutState.value.durationSeconds + 1
                 )
+                updateNotification()
+            }
+        }
+    }
+
+    private fun loadActiveModifiers() {
+        serviceScope.launch {
+            storeRepository.getActiveModifiers().onSuccess { modifiers ->
+                activeModifiers = modifiers
+                updateNotification()
             }
         }
     }
@@ -318,14 +341,45 @@ class WorkoutSensorService : Service(), SensorEventListener {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
+        val boostText = activeModifiers.mapNotNull(::activeModifierNotificationText)
+            .joinToString(" | ")
+        val notificationText = buildString {
+            append("Passos: ${state.steps} | Distância: $kmText")
+            if (boostText.isNotBlank()) append(" | $boostText")
+        }
+
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("FitWorkUp - Treino ($timeText)")
-            .setContentText("Passos: ${state.steps} | Distância: $kmText")
+            .setContentText(notificationText)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(notificationText))
             .setSmallIcon(android.R.drawable.ic_dialog_info)
             .setContentIntent(openWorkoutPendingIntent)
             .setOngoing(true)
             .setOnlyAlertOnce(true)
             .build()
+    }
+
+    private fun activeModifierNotificationText(modifier: ActiveModifier): String? {
+        val expiry = runCatching { Instant.parse(modifier.expiresAt) }.getOrNull() ?: return null
+        val remaining = Duration.between(Instant.now(), expiry).seconds
+        if (remaining <= 0) return null
+
+        val label = when (modifier.effectType.uppercase(Locale.ROOT)) {
+            "XP_MULTIPLIER", "XP_BOOST" -> "XP"
+            "FITCOINS_MULTIPLIER", "FITCOIN_MULTIPLIER", "COINS_MULTIPLIER" -> "Pontos"
+            else -> "Bônus"
+        }
+        val multiplier = if (modifier.multiplier % 1.0 == 0.0) {
+            "x${modifier.multiplier.toInt()}"
+        } else {
+            "x${String.format(Locale.getDefault(), "%.1f", modifier.multiplier)}"
+        }
+        val hours = remaining / 3_600
+        val minutes = (remaining % 3_600) / 60
+        val seconds = remaining % 60
+        val time = if (hours > 0) "%02d:%02d:%02d".format(hours, minutes, seconds)
+        else "%02d:%02d".format(minutes, seconds)
+        return "$label $multiplier ($time)"
     }
 
     private fun updateNotification() {

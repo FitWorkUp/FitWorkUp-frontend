@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.fitworkup.app.data.remote.dto.DailySummaryResponse
 import com.fitworkup.app.data.preferences.WeeklyGoalPreferences
 import com.fitworkup.app.domain.repository.ActivityRepository
+import com.fitworkup.app.domain.repository.StoreRepository
 import com.fitworkup.app.data.repository.ProfileRepository
 import com.fitworkup.app.domain.weeklygoal.countWeeklyActiveDays
 import com.fitworkup.app.util.toLatLngList
@@ -24,7 +25,8 @@ import kotlinx.coroutines.launch
 class HomeViewModel @Inject constructor(
     private val activityRepository: ActivityRepository,
     private val profileRepository: ProfileRepository,
-    private val weeklyGoalPreferences: WeeklyGoalPreferences
+    private val weeklyGoalPreferences: WeeklyGoalPreferences,
+    private val storeRepository: StoreRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<HomeUiState>(HomeUiState())
@@ -35,6 +37,7 @@ class HomeViewModel @Inject constructor(
         observeWeeklyGoal()
         loadUserProfile()
         loadTodaySummary()
+        loadActiveModifiers()
     }
 
     private fun observeWeeklyGoal() {
@@ -59,6 +62,14 @@ class HomeViewModel @Inject constructor(
                         avatarKey = profile.avatarKey
                     )
                 }
+            }
+        }
+    }
+
+    fun loadActiveModifiers() {
+        viewModelScope.launch {
+            storeRepository.getActiveModifiers().onSuccess { modifiers ->
+                _uiState.update { it.copy(activeModifiers = modifiers) }
             }
         }
     }

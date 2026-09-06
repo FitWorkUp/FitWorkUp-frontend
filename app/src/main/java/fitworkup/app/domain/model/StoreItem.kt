@@ -30,3 +30,9 @@ data class StorePurchase(
     val repeatable: Boolean,
     val boostExpiresAt: String?
 )
+
+data class ActiveModifier(
+    val effectType: String,
+    val multiplier: Double,
+    val expiresAt: String
+)
