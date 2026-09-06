@@ -3,6 +3,11 @@ package com.fitworkup.app.navigation
 import android.net.Uri
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
@@ -62,9 +67,36 @@ object Routes {
     }
 }
 
+data class WorkoutNotificationRequest(
+    val requestId: Long,
+    val goalKm: Double?,
+    val groupSessionId: Long?
+)
+
 @Composable
-fun NavGraph(sessionManager: SessionManager) {
+fun NavGraph(
+    sessionManager: SessionManager,
+    workoutNotificationRequest: WorkoutNotificationRequest? = null
+) {
     val navController = rememberNavController()
+    val currentBackStackEntry by navController.currentBackStackEntryAsState()
+    val currentRoute = currentBackStackEntry?.destination?.route
+    var handledRequestId by remember { mutableLongStateOf(0L) }
+
+    LaunchedEffect(workoutNotificationRequest, currentRoute) {
+        val request = workoutNotificationRequest ?: return@LaunchedEffect
+        if (request.requestId == handledRequestId) return@LaunchedEffect
+
+        when (currentRoute) {
+            Routes.WORKOUT -> handledRequestId = request.requestId
+            Routes.HOME, Routes.CONFIG, Routes.FRIEND_PROFILE, Routes.GROUP_LOBBY -> {
+                handledRequestId = request.requestId
+                navController.navigate(Routes.workout(request.goalKm, request.groupSessionId)) {
+                    launchSingleTop = true
+                }
+            }
+        }
+    }
 
     LaunchedEffect(sessionManager, navController) {
         sessionManager.sessionExpired.collect {

@@ -163,6 +163,14 @@ fun WorkoutScreen(
 
                 action = WorkoutSensorService.ACTION_START
 
+                distanceGoalKm?.let {
+                    putExtra(WorkoutSensorService.EXTRA_GOAL_KM, it)
+                }
+
+                groupSessionId?.let {
+                    putExtra(WorkoutSensorService.EXTRA_GROUP_SESSION_ID, it)
+                }
+
             }
 
             ContextCompat.startForegroundService(context, startIntent)
@@ -490,4 +498,3 @@ fun WorkoutScreen(
     }
 
 }
-

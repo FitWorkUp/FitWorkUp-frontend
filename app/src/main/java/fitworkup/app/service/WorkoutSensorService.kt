@@ -5,6 +5,7 @@ import android.annotation.SuppressLint
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
@@ -23,6 +24,7 @@ import android.os.SystemClock
 import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
+import com.fitworkup.app.MainActivity
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationCallback
 import com.google.android.gms.location.LocationRequest
@@ -69,6 +71,8 @@ class WorkoutSensorService : Service(), SensorEventListener {
     private var totalDistanceMeters: Float = 0f
     private val pathPointsList = mutableListOf<Location>()
     private var lastStepDetectedAtMs: Long = 0L
+    private var workoutGoalKm: Double? = null
+    private var workoutGroupSessionId: Long? = null
 
     private val serviceScope = CoroutineScope(Dispatchers.Default)
     private var timerJob: Job? = null
@@ -87,7 +91,13 @@ class WorkoutSensorService : Service(), SensorEventListener {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
-            ACTION_START -> startWorkout()
+            ACTION_START -> {
+                workoutGoalKm = intent.getDoubleExtra(EXTRA_GOAL_KM, Double.NaN)
+                    .takeIf { it.isFinite() && it > 0.0 }
+                workoutGroupSessionId = intent.getLongExtra(EXTRA_GROUP_SESSION_ID, 0L)
+                    .takeIf { it > 0L }
+                startWorkout()
+            }
             ACTION_STOP -> stopWorkout()
         }
         return START_NOT_STICKY
@@ -295,10 +305,24 @@ class WorkoutSensorService : Service(), SensorEventListener {
         val seconds = state.durationSeconds % 60
         val timeText = String.format("%02d:%02d", minutes, seconds)
 
+        val openWorkoutIntent = Intent(this, MainActivity::class.java).apply {
+            action = ACTION_OPEN_WORKOUT
+            flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+            workoutGoalKm?.let { putExtra(EXTRA_GOAL_KM, it) }
+            workoutGroupSessionId?.let { putExtra(EXTRA_GROUP_SESSION_ID, it) }
+        }
+        val openWorkoutPendingIntent = PendingIntent.getActivity(
+            this,
+            NOTIFICATION_ID,
+            openWorkoutIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("FitWorkUp - Treino ($timeText)")
             .setContentText("Passos: ${state.steps} | Distância: $kmText")
             .setSmallIcon(android.R.drawable.ic_dialog_info)
+            .setContentIntent(openWorkoutPendingIntent)
             .setOngoing(true)
             .setOnlyAlertOnce(true)
             .build()
@@ -325,6 +349,9 @@ class WorkoutSensorService : Service(), SensorEventListener {
     companion object {
         const val ACTION_START = "ACTION_START"
         const val ACTION_STOP = "ACTION_STOP"
+        const val ACTION_OPEN_WORKOUT = "com.fitworkup.app.action.OPEN_WORKOUT"
+        const val EXTRA_GOAL_KM = "com.fitworkup.app.extra.GOAL_KM"
+        const val EXTRA_GROUP_SESSION_ID = "com.fitworkup.app.extra.GROUP_SESSION_ID"
         private const val CHANNEL_ID = "workout_sensor_channel"
         private const val NOTIFICATION_ID = 1001
 
