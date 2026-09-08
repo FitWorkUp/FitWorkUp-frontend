@@ -90,16 +90,11 @@ class ActivityRepositoryImpl @Inject constructor(
         }
         val totalSteps = activities.sumOf { it.steps }
         val totalDistance = activities.sumOf { it.distanceKm }
-        val estimatedCalories = maxOf(
-            (totalDistance * 60.0).toInt(),
-            (totalSteps * 0.04).toInt()
-        )
 
         Result.success(
             DailySummaryResponse(
                 totalSteps = totalSteps,
                 totalDistanceKm = totalDistance,
-                totalCalories = estimatedCalories,
                 fitcoins = totalSteps / 100,
                 xp = totalSteps / 10,
                 level = 1

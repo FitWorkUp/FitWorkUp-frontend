@@ -6,7 +6,6 @@ data class UserResponseDto(
     val id: Long,
     val username: String,
     val email: String,
-    val weightKg: Double?,
     val xp: Int,
     val nextLevelXp: Int,
     val level: Int,
@@ -29,7 +28,6 @@ data class UserResponseDto(
         streakDays = streak,
         fitCoins = fitcoins,
         email = email,
-        weightKg = weightKg,
         avatarBorder = avatarBorder,
         avatarKey = avatarKey
     )

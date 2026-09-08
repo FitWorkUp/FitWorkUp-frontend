@@ -12,7 +12,6 @@ data class UserProfile(
     val streakDays: Int,
     val fitCoins: Int,
     val email: String = "",
-    val weightKg: Double? = null,
     val avatarBorder: String = "DEFAULT",
     val avatarKey: String = "ICONMAN1"
 )

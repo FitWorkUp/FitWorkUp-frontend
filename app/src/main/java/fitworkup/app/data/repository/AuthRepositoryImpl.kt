@@ -3,6 +3,7 @@ package com.fitworkup.app.data.repository
 import com.fitworkup.app.data.remote.api.AuthApiService
 import com.fitworkup.app.data.remote.dto.LoginRequestDto
 import com.fitworkup.app.data.remote.dto.ForgotPasswordRequestDto
+import com.fitworkup.app.data.remote.dto.GoogleLoginRequestDto
 import com.fitworkup.app.data.remote.dto.RegisterRequestDto
 import com.fitworkup.app.data.remote.dto.ResetPasswordRequestDto
 import com.fitworkup.app.data.session.TokenStore
@@ -10,6 +11,8 @@ import com.fitworkup.app.domain.model.UserProfile
 import com.fitworkup.app.domain.repository.AuthRepository
 import javax.inject.Inject
 import javax.inject.Singleton
+import org.json.JSONObject
+import retrofit2.Response
 
 @Singleton
 class AuthRepositoryImpl @Inject constructor(
@@ -35,6 +38,18 @@ class AuthRepositoryImpl @Inject constructor(
             throw IllegalStateException("Não foi possível criar a conta.")
         }
         login(email, password).getOrThrow()
+    }
+
+    override suspend fun loginWithGoogle(idToken: String): Result<UserProfile> = runCatching {
+        val response = authApiService.loginWithGoogle(GoogleLoginRequestDto(idToken))
+        val body = response.body()
+        if (!response.isSuccessful || body == null) {
+            throw IllegalStateException(
+                response.apiErrorMessage("Não foi possível entrar com o Google (${response.code()}).")
+            )
+        }
+        tokenStore.saveToken(body.accessToken)
+        body.user.toDomain()
     }
 
     override suspend fun requestPasswordReset(email: String): Result<Unit> = runCatching {
@@ -65,7 +80,16 @@ class AuthRepositoryImpl @Inject constructor(
 
     override suspend fun logout() {
         tokenStore.clear()
+        com.google.firebase.auth.FirebaseAuth.getInstance().signOut()
     }
 
     override suspend fun hasSession(): Boolean = tokenStore.hasToken()
+
+    private fun Response<*>.apiErrorMessage(fallback: String): String {
+        val rawBody = errorBody()?.string() ?: return fallback
+        return runCatching { JSONObject(rawBody).optString("message") }
+            .getOrNull()
+            ?.takeIf(String::isNotBlank)
+            ?: fallback
+    }
 }

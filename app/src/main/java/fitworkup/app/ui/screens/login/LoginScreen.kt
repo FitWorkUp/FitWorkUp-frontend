@@ -19,6 +19,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -29,6 +30,17 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.credentials.CredentialManager
+import androidx.credentials.GetCredentialRequest
+import androidx.credentials.exceptions.GetCredentialCancellationException
+import androidx.credentials.exceptions.NoCredentialException
+import com.fitworkup.app.R
+import com.google.android.libraries.identity.googleid.GetGoogleIdOption
+import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.GoogleAuthProvider
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
 
 @Composable
 fun LoginScreen(
@@ -38,6 +50,9 @@ fun LoginScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val focusManager = LocalFocusManager.current
+    val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
+    var isGoogleLoading by remember { mutableStateOf(false) }
 
     var isLoginMode by remember { mutableStateOf(true) }
 
@@ -272,15 +287,66 @@ fun LoginScreen(
         Spacer(modifier = Modifier.height(20.dp))
 
         OutlinedButton(
-            onClick = { /* TODO: Firebase/Google Auth */ },
+            onClick = {
+                focusManager.clearFocus()
+                isGoogleLoading = true
+                coroutineScope.launch {
+                    runCatching {
+                        val googleIdOption = GetGoogleIdOption.Builder()
+                            .setFilterByAuthorizedAccounts(false)
+                            .setServerClientId(context.getString(R.string.default_web_client_id))
+                            .setAutoSelectEnabled(false)
+                            .build()
+                        val request = GetCredentialRequest.Builder()
+                            .addCredentialOption(googleIdOption)
+                            .build()
+                        val result = CredentialManager.create(context)
+                            .getCredential(context, request)
+                        val googleCredential = GoogleIdTokenCredential
+                            .createFrom(result.credential.data)
+
+                        val firebaseCredential = GoogleAuthProvider.getCredential(
+                            googleCredential.idToken,
+                            null
+                        )
+                        FirebaseAuth.getInstance()
+                            .signInWithCredential(firebaseCredential)
+                            .await()
+                        googleCredential.idToken
+                    }.fold(
+                        onSuccess = { idToken -> viewModel.loginWithGoogle(idToken) },
+                        onFailure = { error ->
+                            val message = when (error) {
+                                is NoCredentialException ->
+                                    "Nenhuma conta Google está disponível neste aparelho. Adicione uma conta nas configurações do Android."
+                                is GetCredentialCancellationException ->
+                                    "Login com Google cancelado. Se nenhuma conta apareceu, adicione uma conta Google ao aparelho."
+                                else -> error.localizedMessage
+                                    ?.takeIf { it.isNotBlank() }
+                                    ?: "Não foi possível entrar com o Google."
+                            }
+                            viewModel.showError(message)
+                        }
+                    )
+                    isGoogleLoading = false
+                }
+            },
+            enabled = !uiState.isLoading && !isGoogleLoading,
             modifier = Modifier
                 .fillMaxWidth()
                 .height(52.dp),
             shape = RoundedCornerShape(14.dp)
         ) {
-            Text("G", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
-            Spacer(modifier = Modifier.width(12.dp))
-            Text(text = "Continuar com o Google", fontSize = 14.sp, color = MaterialTheme.colorScheme.onBackground)
+            if (isGoogleLoading) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(22.dp),
+                    strokeWidth = 2.dp
+                )
+            } else {
+                Text("G", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                Spacer(modifier = Modifier.width(12.dp))
+                Text(text = "Continuar com o Google", fontSize = 14.sp, color = MaterialTheme.colorScheme.onBackground)
+            }
         }
 
         Spacer(modifier = Modifier.weight(1f))

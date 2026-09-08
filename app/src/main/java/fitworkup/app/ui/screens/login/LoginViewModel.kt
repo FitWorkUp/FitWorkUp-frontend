@@ -33,6 +33,14 @@ class LoginViewModel @Inject constructor(
         submit { authRepository.register(username, email, password) }
     }
 
+    fun loginWithGoogle(idToken: String) {
+        submit { authRepository.loginWithGoogle(idToken) }
+    }
+
+    fun showError(message: String) {
+        _uiState.update { it.copy(isLoading = false, errorMessage = message) }
+    }
+
     fun clearError() {
         _uiState.update { it.copy(errorMessage = null) }
     }

@@ -1,0 +1,55 @@
+{
+  "project_info": {
+    "project_number": "661125031603",
+    "project_id": "fitworkup-4cd44",
+    "storage_bucket": "fitworkup-4cd44.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:661125031603:android:7e2ed1689d5c045445f2c6",
+        "android_client_info": {
+          "package_name": "com.fitworkup.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "661125031603-arv0up6tpj4eu1kq0miq4l44rdlm8838.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.fitworkup.app",
+            "certificate_hash": "faff36413883abac0c07f0b67538a3e677044b74"
+          }
+        },
+        {
+          "client_id": "661125031603-mlnra9bkdjdm67isk1nuuq6rnkmnac17.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.fitworkup.app",
+            "certificate_hash": "e8c3a1e6824a40bce3e54d6a1dcc02034fef2cc3"
+          }
+        },
+        {
+          "client_id": "661125031603-t2q5jl93ahrgdttvkd50ie2rieq9p4fu.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCZYWR2edIABol5VGQX3Q_nrw1bfh3-zxk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "661125031603-t2q5jl93ahrgdttvkd50ie2rieq9p4fu.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

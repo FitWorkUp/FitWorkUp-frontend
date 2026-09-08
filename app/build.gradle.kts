@@ -6,6 +6,8 @@ plugins {
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.ksp)
     alias(libs.plugins.hilt)
+    id("com.google.gms.google-services")
+
 }
 
 val properties = Properties().apply {
@@ -114,6 +116,20 @@ dependencies {
 
     // Ads
     implementation(libs.ads.mobile.sdk)
+
+    // Firebase Authentication
+    // Firebase Auth 24.2.0 (BoM 34.18.0) usa metadados do Kotlin 2.3,
+    // incompatíveis com o Kotlin 2.0.21 deste projeto.
+    implementation(platform("com.google.firebase:firebase-bom:33.7.0"))
+    implementation("com.google.firebase:firebase-auth")
+
+// Login Google com Credential Manager
+    implementation("androidx.credentials:credentials:1.3.0")
+    implementation("androidx.credentials:credentials-play-services-auth:1.3.0")
+    implementation("com.google.android.libraries.identity.googleid:googleid:1.1.1")
+
+// Permite usar await() com as tarefas do Firebase
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.9.0")
 
     // Testing / Debug
     testImplementation(libs.junit)
