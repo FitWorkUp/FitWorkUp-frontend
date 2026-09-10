@@ -13,3 +13,10 @@
 .externalNativeBuild
 .cxx
 local.properties
+
+# Assinatura de versões publicadas
+*.jks
+*.keystore
+keystore.properties
+*.apk
+/app/release/
