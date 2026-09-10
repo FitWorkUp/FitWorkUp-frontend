@@ -55,7 +55,7 @@ fun WorkoutActiveView(
                         color = MaterialTheme.colorScheme.onPrimary
                     )
                 } else {
-                    Text("Finalizar Treino")
+                    Text("Finalizar Atividade")
                 }
             }
         }

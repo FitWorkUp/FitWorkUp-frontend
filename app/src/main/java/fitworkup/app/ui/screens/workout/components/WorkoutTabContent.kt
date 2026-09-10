@@ -42,7 +42,7 @@ import kotlinx.coroutines.delay
 fun WorkoutTabContent(
     homeUiState: HomeUiState,
     onStartWorkout: (WorkoutSetupAction) -> Unit,
-    onWeeklyGoalChanged: (enabled: Boolean, targetDays: Int) -> Unit,
+    onEditWeeklyGoal: () -> Unit,
     modifier: Modifier = Modifier,
     dashboardViewModel: DashboardViewModel = hiltViewModel()
 ) {
@@ -66,7 +66,7 @@ fun WorkoutTabContent(
         routePoints = effectiveRoutePoints,
         activeModifiers = homeUiState.activeModifiers,
         onStartWorkout = onStartWorkout,
-        onWeeklyGoalChanged = onWeeklyGoalChanged,
+        onEditWeeklyGoal = onEditWeeklyGoal,
         modifier = modifier,
         dashboardViewModel = dashboardViewModel
     )
@@ -89,14 +89,13 @@ fun WorkoutTabContent(
     routePoints: List<LatLng> = emptyList(),
     activeModifiers: List<ActiveModifier> = emptyList(),
     onStartWorkout: (WorkoutSetupAction) -> Unit,
-    onWeeklyGoalChanged: (enabled: Boolean, targetDays: Int) -> Unit = { _, _ -> },
+    onEditWeeklyGoal: () -> Unit = {},
     modifier: Modifier = Modifier,
     dashboardViewModel: DashboardViewModel = hiltViewModel()
 ) {
     val dashboardState by dashboardViewModel.uiState.collectAsStateWithLifecycle()
     val scrollState = rememberScrollState()
     var showGoalBottomSheet by remember { mutableStateOf(false) }
-    var showWeeklyGoalBottomSheet by remember { mutableStateOf(false) }
 
     val stepProgress = if (dailyStepGoal > 0) {
         (currentSteps.toFloat() / dailyStepGoal.toFloat()).coerceIn(0f, 1f)
@@ -229,7 +228,7 @@ fun WorkoutTabContent(
                 enabled = weeklyGoalEnabled,
                 activeDays = weeklyActiveDays,
                 targetDays = weeklyGoalDays,
-                onEditClick = { showWeeklyGoalBottomSheet = true },
+                onEditClick = onEditWeeklyGoal,
                 modifier = Modifier.fillMaxWidth()
             )
 
@@ -304,17 +303,6 @@ fun WorkoutTabContent(
             )
         }
 
-        if (showWeeklyGoalBottomSheet) {
-            WeeklyGoalBottomSheet(
-                currentEnabled = weeklyGoalEnabled,
-                currentTargetDays = weeklyGoalDays,
-                onSave = { enabled, targetDays ->
-                    onWeeklyGoalChanged(enabled, targetDays)
-                    showWeeklyGoalBottomSheet = false
-                },
-                onDismissRequest = { showWeeklyGoalBottomSheet = false }
-            )
-        }
     }
 }
 

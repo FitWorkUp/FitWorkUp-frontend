@@ -53,7 +53,7 @@ fun HomeScreen(
                     selected = selectedTab == 0,
                     onClick = { selectedTab = 0 },
                     icon = { Icon(Icons.Default.Home, contentDescription = "Treino") },
-                    label = { Text("Treino") },
+                    label = { Text("Atividade") },
                     colors = navBarItemColors
                 )
                 NavigationBarItem(
@@ -85,7 +85,7 @@ fun HomeScreen(
                 0 -> WorkoutTabContent(
                     homeUiState = homeUiState,
                     onStartWorkout = onStartWorkoutClick,
-                    onWeeklyGoalChanged = viewModel::updateWeeklyGoal
+                    onEditWeeklyGoal = onSettingsClick
                 )
                 1 -> RankingTabRoute()
                 2 -> StorePoints()

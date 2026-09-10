@@ -87,6 +87,7 @@ class WorkoutViewModel @Inject constructor(
             _uiState.update {
                 it.copy(
                     isTracking = sensorState.isTracking,
+                    isPaused = sensorState.isPaused,
                     totalSteps = newStepCount,
                     acceptedSteps = newAccepted,
                     heldSteps = newHeld,
@@ -104,6 +105,7 @@ class WorkoutViewModel @Inject constructor(
             _uiState.update {
                 it.copy(
                     isTracking = sensorState.isTracking,
+                    isPaused = sensorState.isPaused,
                     totalSteps = newStepCount,
                     totalDistanceKm = safeDistanceKm,
                     averageSpeedKmH = speedKmH.toFloat(),
@@ -161,7 +163,7 @@ class WorkoutViewModel @Inject constructor(
                         it.copy(
                             isSubmitting = false,
                             submissionSuccess = false,
-                            errorMessage = result.exceptionOrNull()?.message ?: "Falha ao registrar o treino."
+                            errorMessage = result.exceptionOrNull()?.message ?: "Falha ao registrar atividade."
                         )
                     }
                 }

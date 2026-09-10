@@ -127,7 +127,7 @@ fun ConfigScreen(
             SettingCard(
                 icon = Icons.Outlined.CalendarMonth,
                 title = "Dias de atividade por semana",
-                subtitle = "Treinos no mesmo dia contam apenas uma vez"
+                subtitle = "Atividades no mesmo dia contam apenas uma vez"
             ) {
                 Text(
                     text = "${uiState.weeklyGoalDays} ${if (uiState.weeklyGoalDays == 1) "dia" else "dias"}",

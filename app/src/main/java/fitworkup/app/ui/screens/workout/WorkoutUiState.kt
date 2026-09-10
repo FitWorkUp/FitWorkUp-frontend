@@ -8,6 +8,7 @@ import android.location.Location
  */
 data class WorkoutUiState(
     val isTracking: Boolean = false,
+    val isPaused: Boolean = false,
     val totalDistanceKm: Float = 0f,
     val targetDistanceKm: Double? = null,
     val groupSessionId: Long? = null,

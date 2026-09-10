@@ -42,7 +42,7 @@ fun OfflineBanner(modifier: Modifier = Modifier) {
                     fontWeight = FontWeight.SemiBold
                 )
                 Text(
-                    text = "Os treinos continuam salvos neste aparelho.",
+                    text = "As atividades continuam salvas neste aparelho.",
                     style = MaterialTheme.typography.bodySmall
                 )
             }

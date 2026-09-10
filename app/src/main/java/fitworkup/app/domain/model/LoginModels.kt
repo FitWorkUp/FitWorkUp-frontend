@@ -29,7 +29,7 @@ object OnboardingData {
         OnboardingPage(
             emoji = "📍",
             title = "Acompanhe seu progresso",
-            description = "Durante o treino, acompanhe os dados coletados pelo seu celular.",
+            description = "Durante a atividade, acompanhe os dados coletados pelo seu celular.",
             checkItems = listOf(
                 "Veja distância, duração e passos validados",
                 "Acompanhe sua meta e quanto falta para concluí-la",

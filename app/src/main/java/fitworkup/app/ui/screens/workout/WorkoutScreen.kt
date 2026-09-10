@@ -279,7 +279,7 @@ fun WorkoutScreen(
 
             context.stopService(stopIntent)
 
-            Toast.makeText(context, "Treino registrado com sucesso!", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, "Atividade registrada com sucesso!", Toast.LENGTH_SHORT).show()
 
             onWorkoutFinished()
 
@@ -307,7 +307,7 @@ fun WorkoutScreen(
 
                 Text(
 
-                    "O FitWorkUp precisa de acesso ao seu GPS (Localização), Notificações e aos Sensores de Atividade Física para registrar seu percurso e validar o treino."
+                    "O FitWorkUp precisa de acesso ao seu GPS (Localização), Notificações e aos Sensores de Atividade Física para registrar seu percurso e validar as atividades."
 
                 )
 
@@ -375,7 +375,7 @@ fun WorkoutScreen(
 
                     Text(
 
-                        text = "Treino em Andamento",
+                        text = "Atividade em Andamento",
 
                         style = MaterialTheme.typography.titleMedium
 
@@ -447,7 +447,59 @@ fun WorkoutScreen(
 
 
 
-// 🏁 3. BOTÃO DE FINALIZAR TREINO
+// ⏯️ 3. CONTROLES DO TREINO
+
+            OutlinedButton(
+
+                onClick = {
+
+                    val action = if (uiState.isPaused) {
+                        WorkoutSensorService.ACTION_RESUME
+                    } else {
+                        WorkoutSensorService.ACTION_PAUSE
+                    }
+
+                    context.startService(
+                        Intent(context, WorkoutSensorService::class.java).apply {
+                            this.action = action
+                        }
+                    )
+
+                },
+
+                enabled = !uiState.isSubmitting && uiState.isTracking,
+
+                modifier = Modifier
+
+                    .fillMaxWidth()
+
+                    .height(56.dp)
+
+            ) {
+
+                Text(
+
+                    text = if (uiState.isPaused) "Retomar Atividade" else "Pausar Atividade",
+
+                    style = MaterialTheme.typography.titleMedium
+
+                )
+
+            }
+
+            if (uiState.isPaused) {
+
+                Text(
+
+                    text = "Atividade pausada: tempo, passos e distância estão congelados.",
+
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+
+                    style = MaterialTheme.typography.bodySmall
+
+                )
+
+            }
 
             Button(
 
@@ -483,7 +535,7 @@ fun WorkoutScreen(
 
                     Text(
 
-                        text = "Finalizar Treino",
+                        text = "Finalizar Atividade",
 
                         style = MaterialTheme.typography.titleMedium
 

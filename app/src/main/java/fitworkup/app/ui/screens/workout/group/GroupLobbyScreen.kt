@@ -308,7 +308,7 @@ private fun LobbyContent(
                     )
                 }
                 Text(
-                    "O treino abrirá quando o anfitrião iniciar.",
+                    "A atividade abrirá quando o anfitrião iniciar.",
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(top = 6.dp),

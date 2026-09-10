@@ -57,6 +57,7 @@ data class WorkoutState(
     val gpsAccuracyMeters: Float = 0f, // 💡 Adicionado para o status dinâmico do GPS
     val durationSeconds: Long = 0L,   // 💡 Adicionado para o cronômetro do treino
     val isTracking: Boolean = false,
+    val isPaused: Boolean = false,
     val currentLocation: Location? = null,
     val pathPoints: List<Location> = emptyList()
 )
@@ -75,6 +76,7 @@ class WorkoutSensorService : Service(), SensorEventListener {
     private lateinit var sensorManager: SensorManager
     private var stepCounterSensor: Sensor? = null
     private var initialStepCount: Int = -1
+    private var accumulatedSteps: Int = 0
 
     private lateinit var fusedLocationClient: FusedLocationProviderClient
     private lateinit var locationCallback: LocationCallback
@@ -110,6 +112,8 @@ class WorkoutSensorService : Service(), SensorEventListener {
                     .takeIf { it > 0L }
                 startWorkout()
             }
+            ACTION_PAUSE -> pauseWorkout()
+            ACTION_RESUME -> resumeWorkout()
             ACTION_STOP -> stopWorkout()
         }
         return START_NOT_STICKY
@@ -141,6 +145,7 @@ class WorkoutSensorService : Service(), SensorEventListener {
         totalDistanceMeters = 0f
         lastLocation = null
         initialStepCount = -1
+        accumulatedSteps = 0
         lastStepDetectedAtMs = 0L
 
         _workoutState.value = WorkoutState(
@@ -180,14 +185,49 @@ class WorkoutSensorService : Service(), SensorEventListener {
     private fun startTimer() {
         timerJob?.cancel()
         timerJob = serviceScope.launch {
-            while (isActive && _workoutState.value.isTracking) {
+            while (isActive) {
                 delay(1000L)
+
+                val currentState = _workoutState.value
+                if (!currentState.isTracking || currentState.isPaused) break
+
                 _workoutState.value = _workoutState.value.copy(
-                    durationSeconds = _workoutState.value.durationSeconds + 1
+                    durationSeconds = currentState.durationSeconds + 1
                 )
                 updateNotification()
             }
         }
+    }
+
+    private fun pauseWorkout() {
+        if (!_workoutState.value.isTracking || _workoutState.value.isPaused) return
+
+        _workoutState.value = _workoutState.value.copy(isPaused = true)
+        timerJob?.cancel()
+        timerJob = null
+        accumulatedSteps = _workoutState.value.steps
+        initialStepCount = -1
+        lastStepDetectedAtMs = 0L
+        lastLocation = null
+        stepCounterSensor?.let { sensorManager.unregisterListener(this, it) }
+        if (::fusedLocationClient.isInitialized && ::locationCallback.isInitialized) {
+            fusedLocationClient.removeLocationUpdates(locationCallback)
+        }
+        updateNotification()
+    }
+
+    private fun resumeWorkout() {
+        if (!_workoutState.value.isTracking || !_workoutState.value.isPaused) return
+
+        lastStepDetectedAtMs = 0L
+        lastLocation = null
+        _workoutState.value = _workoutState.value.copy(isPaused = false)
+        startTimer()
+        stepCounterSensor?.let { sensor ->
+            sensorManager.registerListener(this, sensor, SensorManager.SENSOR_DELAY_UI)
+        }
+        startLocationUpdates()
+        updateNotification()
     }
 
     private fun loadActiveModifiers() {
@@ -201,7 +241,7 @@ class WorkoutSensorService : Service(), SensorEventListener {
 
     private fun stopWorkout() {
         timerJob?.cancel()
-        _workoutState.value = _workoutState.value.copy(isTracking = false)
+        _workoutState.value = _workoutState.value.copy(isTracking = false, isPaused = false)
 
         stepCounterSensor?.let { sensor ->
             sensorManager.unregisterListener(this, sensor)
@@ -219,7 +259,7 @@ class WorkoutSensorService : Service(), SensorEventListener {
     }
 
     override fun onSensorChanged(event: SensorEvent?) {
-        if (!_workoutState.value.isTracking) return
+        if (!_workoutState.value.isTracking || _workoutState.value.isPaused) return
 
         if (event?.sensor?.type == Sensor.TYPE_STEP_COUNTER) {
             val totalStepsSinceBoot = event.values[0].toInt()
@@ -228,7 +268,7 @@ class WorkoutSensorService : Service(), SensorEventListener {
                 initialStepCount = totalStepsSinceBoot
             }
 
-            val sessionSteps = totalStepsSinceBoot - initialStepCount
+            val sessionSteps = accumulatedSteps + totalStepsSinceBoot - initialStepCount
             if (sessionSteps > _workoutState.value.steps) {
                 lastStepDetectedAtMs = SystemClock.elapsedRealtime()
             }
@@ -264,7 +304,7 @@ class WorkoutSensorService : Service(), SensorEventListener {
     }
 
     private fun updateLocationAndDistance(newLocation: Location) {
-        if (!_workoutState.value.isTracking) return
+        if (!_workoutState.value.isTracking || _workoutState.value.isPaused) return
 
         val isMock = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             newLocation.isMock
@@ -349,13 +389,17 @@ class WorkoutSensorService : Service(), SensorEventListener {
         }
 
         return NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("FitWorkUp - Treino ($timeText)")
+            .setContentTitle(
+                if (state.isPaused) "FitWorkUp - Atividade pausada ($timeText)"
+                else "FitWorkUp - Atividade ($timeText)"
+            )
             .setContentText(notificationText)
             .setStyle(NotificationCompat.BigTextStyle().bigText(notificationText))
             .setSmallIcon(android.R.drawable.ic_dialog_info)
             .setContentIntent(openWorkoutPendingIntent)
             .setOngoing(true)
             .setOnlyAlertOnce(true)
+            .setShowWhen(false)
             .build()
     }
 
@@ -403,6 +447,8 @@ class WorkoutSensorService : Service(), SensorEventListener {
     companion object {
         const val ACTION_START = "ACTION_START"
         const val ACTION_STOP = "ACTION_STOP"
+        const val ACTION_PAUSE = "ACTION_PAUSE"
+        const val ACTION_RESUME = "ACTION_RESUME"
         const val ACTION_OPEN_WORKOUT = "com.fitworkup.app.action.OPEN_WORKOUT"
         const val EXTRA_GOAL_KM = "com.fitworkup.app.extra.GOAL_KM"
         const val EXTRA_GROUP_SESSION_ID = "com.fitworkup.app.extra.GROUP_SESSION_ID"
