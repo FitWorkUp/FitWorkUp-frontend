@@ -22,21 +22,38 @@ class TokenStore @Inject constructor(
         preferences[ACCESS_TOKEN]
     }
 
-    suspend fun saveToken(token: String) {
-        context.sessionDataStore.edit { it[ACCESS_TOKEN] = token }
+    val userIdFlow: Flow<String?> = context.sessionDataStore.data.map { preferences ->
+        preferences[USER_ID]
+    }
+
+    suspend fun saveSession(token: String, userId: String) {
+        context.sessionDataStore.edit {
+            it[ACCESS_TOKEN] = token
+            it[USER_ID] = userId
+        }
+    }
+
+    suspend fun saveUserId(userId: String) {
+        context.sessionDataStore.edit { it[USER_ID] = userId }
     }
 
     suspend fun clear() {
-        context.sessionDataStore.edit { it.remove(ACCESS_TOKEN) }
+        context.sessionDataStore.edit {
+            it.remove(ACCESS_TOKEN)
+            it.remove(USER_ID)
+        }
     }
 
     suspend fun hasToken(): Boolean = !tokenFlow.first().isNullOrBlank()
 
     fun getTokenBlocking(): String? = runBlocking { tokenFlow.first() }
 
+    suspend fun getUserId(): String? = userIdFlow.first()
+
     fun clearBlocking() = runBlocking { clear() }
 
     private companion object {
         val ACCESS_TOKEN = stringPreferencesKey("access_token")
+        val USER_ID = stringPreferencesKey("user_id")
     }
 }

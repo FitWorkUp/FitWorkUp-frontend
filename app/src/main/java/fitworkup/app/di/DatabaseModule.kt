@@ -25,6 +25,18 @@ object DatabaseModule {
         }
     }
 
+    private val MIGRATION_2_3 = object : Migration(2, 3) {
+        override fun migrate(database: SupportSQLiteDatabase) {
+            database.execSQL(
+                "ALTER TABLE activities ADD COLUMN owner_user_id TEXT NOT NULL DEFAULT ''"
+            )
+            database.execSQL(
+                "CREATE INDEX IF NOT EXISTS index_activities_owner_user_id " +
+                    "ON activities(owner_user_id)"
+            )
+        }
+    }
+
     @Provides
     @Singleton
     fun provideAppDatabase(
@@ -35,7 +47,7 @@ object DatabaseModule {
             AppDatabase::class.java,
             "fitworkup_db"
         )
-            .addMigrations(MIGRATION_1_2)
+            .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
             .build()
     }
 

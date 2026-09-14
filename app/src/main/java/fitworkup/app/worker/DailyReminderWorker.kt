@@ -6,6 +6,7 @@ import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.fitworkup.app.data.local.dao.ActivityDao
 import com.fitworkup.app.data.preferences.ReminderPreferences
+import com.fitworkup.app.data.session.TokenStore
 import com.fitworkup.app.notifications.NotificationHelper
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
@@ -20,13 +21,15 @@ class DailyReminderWorker @AssistedInject constructor(
     @Assisted workerParams: WorkerParameters,
     private val reminderPreferences: ReminderPreferences,
     private val activityDao: ActivityDao,
+    private val tokenStore: TokenStore,
     private val notificationHelper: NotificationHelper
 ) : CoroutineWorker(appContext, workerParams) {
 
     override suspend fun doWork(): Result = runCatching {
         val settings = reminderPreferences.current()
         val today = LocalDate.now()
-        val latestTimestamp = activityDao.getLatestActivityTimestamp()
+        val userId = tokenStore.getUserId() ?: return Result.success()
+        val latestTimestamp = activityDao.getLatestActivityTimestamp(userId)
         val latestActivityDate = latestTimestamp?.let {
             Instant.ofEpochMilli(it).atZone(ZoneId.systemDefault()).toLocalDate()
         }

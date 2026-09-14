@@ -4,6 +4,7 @@ import com.fitworkup.app.data.remote.api.FriendshipApiService
 import com.fitworkup.app.data.remote.api.UserApiService
 import com.fitworkup.app.data.remote.dto.FriendshipRequestDto
 import com.fitworkup.app.data.remote.dto.UpdateAvatarRequestDto
+import com.fitworkup.app.data.session.TokenStore
 import com.fitworkup.app.domain.model.BadgeItem
 import com.fitworkup.app.domain.model.FriendItem
 import com.fitworkup.app.domain.model.FriendProfileDetails
@@ -17,14 +18,17 @@ import kotlinx.coroutines.flow.flow
 @Singleton
 class ProfileRepositoryImpl @Inject constructor(
     private val userApiService: UserApiService,
-    private val friendshipApiService: FriendshipApiService
+    private val friendshipApiService: FriendshipApiService,
+    private val tokenStore: TokenStore
 ) : ProfileRepository {
 
     override fun getUserProfile(): Flow<Result<UserProfile>> = flow {
         emit(runCatching {
             val response = userApiService.getMyProfile()
-            response.body()?.takeIf { response.isSuccessful }?.toDomain()
+            val profile = response.body()?.takeIf { response.isSuccessful }?.toDomain()
                 ?: error("Falha ao carregar o perfil (${response.code()}).")
+            tokenStore.saveUserId(profile.id)
+            profile
         })
     }
 

@@ -5,6 +5,7 @@ import com.fitworkup.app.data.local.entity.ActivityEntity
 import com.fitworkup.app.data.remote.api.FitWorkUpApi
 import com.fitworkup.app.data.remote.dto.ActivityRequest
 import com.fitworkup.app.data.remote.dto.DailySummaryResponse
+import com.fitworkup.app.data.session.TokenStore
 import com.fitworkup.app.domain.model.UserActivityItem
 import com.fitworkup.app.domain.repository.ActivityRepository
 import com.google.gson.Gson
@@ -15,14 +16,18 @@ import java.time.ZoneId
 import javax.inject.Inject
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 class ActivityRepositoryImpl @Inject constructor(
     private val api: FitWorkUpApi,
-    private val activityDao: ActivityDao
+    private val activityDao: ActivityDao,
+    private val tokenStore: TokenStore
 ) : ActivityRepository {
 
     private val gson = Gson()
@@ -32,8 +37,12 @@ class ActivityRepositoryImpl @Inject constructor(
 
     override suspend fun registerActivity(request: ActivityRequest): Result<Unit> = withContext(Dispatchers.IO) {
         try {
+            val userId = tokenStore.getUserId()
+                ?: error("Sessão de usuário indisponível.")
+
             // 1. PERSISTÊNCIA INSTANTÂNEA NO BANCO LOCAL (SQLite via Room)
             val localEntity = ActivityEntity(
+                ownerUserId = userId,
                 type = request.type,
                 distanceKm = request.distanceKm,
                 steps = request.steps,
@@ -82,8 +91,10 @@ class ActivityRepositoryImpl @Inject constructor(
     }
 
     private suspend fun getTodaySummaryFromLocal(): Result<DailySummaryResponse> = withContext(Dispatchers.IO) {
+        val userId = tokenStore.getUserId()
+            ?: return@withContext Result.failure(IllegalStateException("Sessão de usuário indisponível."))
         val today = LocalDate.now()
-        val activities = activityDao.getAllActivities().filter { entity ->
+        val activities = activityDao.getAllActivities(userId).filter { entity ->
             Instant.ofEpochMilli(entity.timestamp)
                 .atZone(ZoneId.systemDefault())
                 .toLocalDate() == today
@@ -102,8 +113,15 @@ class ActivityRepositoryImpl @Inject constructor(
         )
     }
 
+    @OptIn(ExperimentalCoroutinesApi::class)
     override fun getLocalActivitiesFlow(): Flow<List<UserActivityItem>> {
-        return activityDao.getAllActivitiesFlow().map { entities ->
+        return tokenStore.userIdFlow.flatMapLatest { userId ->
+            if (userId.isNullOrBlank()) {
+                flowOf(emptyList())
+            } else {
+                activityDao.getAllActivitiesFlow(userId)
+            }
+        }.map { entities ->
             entities.map { entity ->
                 UserActivityItem(
                     id = entity.id,

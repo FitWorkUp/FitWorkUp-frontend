@@ -2,12 +2,19 @@ package com.fitworkup.app.data.local.entity
 
 import androidx.room.ColumnInfo
 import androidx.room.Entity
+import androidx.room.Index
 import androidx.room.PrimaryKey
 
-@Entity(tableName = "activities")
+@Entity(
+    tableName = "activities",
+    indices = [Index(value = ["owner_user_id"])]
+)
 data class ActivityEntity(
     @PrimaryKey(autoGenerate = true)
     val id: Long = 0,
+
+    @ColumnInfo(name = "owner_user_id")
+    val ownerUserId: String,
 
     @ColumnInfo(name = "type")
     val type: String,

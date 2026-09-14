@@ -90,6 +90,8 @@ class WorkoutSensorService : Service(), SensorEventListener {
 
     private val serviceScope = CoroutineScope(Dispatchers.Default)
     private var timerJob: Job? = null
+    private var modifierRefreshJob: Job? = null
+    private var notificationTickerJob: Job? = null
 
     inner class LocalBinder : Binder() {
         fun getService(): WorkoutSensorService = this@WorkoutSensorService
@@ -157,7 +159,8 @@ class WorkoutSensorService : Service(), SensorEventListener {
         )
 
         startTimer()
-        loadActiveModifiers()
+        startModifierMonitoring()
+        startNotificationTicker()
 
         val notification = buildNotification()
         val serviceType = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
@@ -230,17 +233,41 @@ class WorkoutSensorService : Service(), SensorEventListener {
         updateNotification()
     }
 
-    private fun loadActiveModifiers() {
-        serviceScope.launch {
-            storeRepository.getActiveModifiers().onSuccess { modifiers ->
-                activeModifiers = modifiers
+    private fun startModifierMonitoring() {
+        modifierRefreshJob?.cancel()
+        modifierRefreshJob = serviceScope.launch {
+            while (isActive && _workoutState.value.isTracking) {
+                val result = storeRepository.getActiveModifiers()
+                result.onSuccess { modifiers ->
+                    activeModifiers = modifiers
+                    updateNotification()
+                }
+
+                delay(
+                    if (result.isSuccess) MODIFIER_REFRESH_INTERVAL_MS
+                    else MODIFIER_RETRY_INTERVAL_MS
+                )
+            }
+        }
+    }
+
+    private fun startNotificationTicker() {
+        notificationTickerJob?.cancel()
+        notificationTickerJob = serviceScope.launch {
+            while (isActive && _workoutState.value.isTracking) {
                 updateNotification()
+                delay(NOTIFICATION_UPDATE_INTERVAL_MS)
             }
         }
     }
 
     private fun stopWorkout() {
         timerJob?.cancel()
+        modifierRefreshJob?.cancel()
+        modifierRefreshJob = null
+        notificationTickerJob?.cancel()
+        notificationTickerJob = null
+        activeModifiers = emptyList()
         _workoutState.value = _workoutState.value.copy(isTracking = false, isPaused = false)
 
         stepCounterSensor?.let { sensor ->
@@ -384,8 +411,8 @@ class WorkoutSensorService : Service(), SensorEventListener {
         val boostText = activeModifiers.mapNotNull(::activeModifierNotificationText)
             .joinToString(" | ")
         val notificationText = buildString {
+            if (boostText.isNotBlank()) append("$boostText | ")
             append("Passos: ${state.steps} | Distância: $kmText")
-            if (boostText.isNotBlank()) append(" | $boostText")
         }
 
         return NotificationCompat.Builder(this, CHANNEL_ID)
@@ -394,6 +421,7 @@ class WorkoutSensorService : Service(), SensorEventListener {
                 else "FitWorkUp - Atividade ($timeText)"
             )
             .setContentText(notificationText)
+            .setSubText(boostText.takeIf(String::isNotBlank))
             .setStyle(NotificationCompat.BigTextStyle().bigText(notificationText))
             .setSmallIcon(android.R.drawable.ic_dialog_info)
             .setContentIntent(openWorkoutPendingIntent)
@@ -461,5 +489,8 @@ class WorkoutSensorService : Service(), SensorEventListener {
         private const val MIN_ROUTE_POINT_DISTANCE_METERS = 3f
         private const val MAX_WALKING_SPEED_MPS = 7f
         private const val RECENT_STEP_WINDOW_MS = 8_000L
+        private const val NOTIFICATION_UPDATE_INTERVAL_MS = 1_000L
+        private const val MODIFIER_REFRESH_INTERVAL_MS = 60_000L
+        private const val MODIFIER_RETRY_INTERVAL_MS = 10_000L
     }
 }

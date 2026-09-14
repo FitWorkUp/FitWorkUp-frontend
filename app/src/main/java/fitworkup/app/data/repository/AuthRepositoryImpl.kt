@@ -26,8 +26,9 @@ class AuthRepositoryImpl @Inject constructor(
         if (!response.isSuccessful || body == null) {
             throw IllegalStateException("Não foi possível entrar. Verifique suas credenciais.")
         }
-        tokenStore.saveToken(body.accessToken)
-        body.user.toDomain()
+        val profile = body.user.toDomain()
+        tokenStore.saveSession(body.accessToken, profile.id)
+        profile
     }
 
     override suspend fun register(username: String, email: String, password: String): Result<UserProfile> = runCatching {
@@ -48,8 +49,9 @@ class AuthRepositoryImpl @Inject constructor(
                 response.apiErrorMessage("Não foi possível entrar com o Google (${response.code()}).")
             )
         }
-        tokenStore.saveToken(body.accessToken)
-        body.user.toDomain()
+        val profile = body.user.toDomain()
+        tokenStore.saveSession(body.accessToken, profile.id)
+        profile
     }
 
     override suspend fun requestPasswordReset(email: String): Result<Unit> = runCatching {
