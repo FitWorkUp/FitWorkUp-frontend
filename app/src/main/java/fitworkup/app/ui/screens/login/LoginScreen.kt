@@ -35,7 +35,7 @@ import androidx.credentials.GetCredentialRequest
 import androidx.credentials.exceptions.GetCredentialCancellationException
 import androidx.credentials.exceptions.NoCredentialException
 import com.fitworkup.app.R
-import com.google.android.libraries.identity.googleid.GetGoogleIdOption
+import com.google.android.libraries.identity.googleid.GetSignInWithGoogleOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.GoogleAuthProvider
@@ -292,10 +292,9 @@ fun LoginScreen(
                 isGoogleLoading = true
                 coroutineScope.launch {
                     runCatching {
-                        val googleIdOption = GetGoogleIdOption.Builder()
-                            .setFilterByAuthorizedAccounts(false)
-                            .setServerClientId(context.getString(R.string.default_web_client_id))
-                            .setAutoSelectEnabled(false)
+                        val googleIdOption = GetSignInWithGoogleOption.Builder(
+                            serverClientId = context.getString(R.string.default_web_client_id)
+                        )
                             .build()
                         val request = GetCredentialRequest.Builder()
                             .addCredentialOption(googleIdOption)
@@ -318,7 +317,7 @@ fun LoginScreen(
                         onFailure = { error ->
                             val message = when (error) {
                                 is NoCredentialException ->
-                                    "Nenhuma conta Google está disponível neste aparelho. Adicione uma conta nas configurações do Android."
+                                    "O Google não conseguiu disponibilizar uma conta para o login. Verifique se a conta precisa ser autenticada novamente e se os Serviços do Google Play estão atualizados."
                                 is GetCredentialCancellationException ->
                                     "Login com Google cancelado. Se nenhuma conta apareceu, adicione uma conta Google ao aparelho."
                                 else -> error.localizedMessage
