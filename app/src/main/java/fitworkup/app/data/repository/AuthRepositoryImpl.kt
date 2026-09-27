@@ -82,7 +82,6 @@ class AuthRepositoryImpl @Inject constructor(
 
     override suspend fun logout() {
         tokenStore.clear()
-        com.google.firebase.auth.FirebaseAuth.getInstance().signOut()
     }
 
     override suspend fun hasSession(): Boolean = tokenStore.hasToken()

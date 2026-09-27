@@ -37,10 +37,7 @@ import androidx.credentials.exceptions.NoCredentialException
 import com.fitworkup.app.R
 import com.google.android.libraries.identity.googleid.GetSignInWithGoogleOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
-import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.auth.GoogleAuthProvider
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.tasks.await
 
 @Composable
 fun LoginScreen(
@@ -303,14 +300,6 @@ fun LoginScreen(
                             .getCredential(context, request)
                         val googleCredential = GoogleIdTokenCredential
                             .createFrom(result.credential.data)
-
-                        val firebaseCredential = GoogleAuthProvider.getCredential(
-                            googleCredential.idToken,
-                            null
-                        )
-                        FirebaseAuth.getInstance()
-                            .signInWithCredential(firebaseCredential)
-                            .await()
                         googleCredential.idToken
                     }.fold(
                         onSuccess = { idToken -> viewModel.loginWithGoogle(idToken) },
